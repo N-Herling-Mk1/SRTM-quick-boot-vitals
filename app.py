@@ -31,9 +31,34 @@ import statistics
 from collections import defaultdict
 
 import requests
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_from_directory
 
 # ----------------------------------------------------------------- config
+def _load_env_file():
+    """Read .env from the repo root into os.environ if present.
+
+    Without this, `python app.py` starts with no token and every /api call
+    500s -- the shell has to have sourced .env first, which is easy to forget
+    and gives a page that looks broken rather than unconfigured. Values
+    already in the environment win, so `set -a; . .env` still overrides.
+    No dependency: this is twelve lines, not python-dotenv.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        for raw in f:
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            k, v = k.strip(), v.strip().strip('"').strip("'")
+            if k and k not in os.environ:
+                os.environ[k] = v
+
+
+_load_env_file()
+
 INFLUX_URL    = os.environ.get("INFLUX_URL", "http://127.0.0.1:8096")
 INFLUX_ORG    = os.environ.get("INFLUXDB_ORG", "SRTM")
 INFLUX_BUCKET = os.environ.get("INFLUXDB_BUCKET", "SRTM-bucket")
@@ -406,8 +431,8 @@ def index():
 @app.route("/api/vitals")
 def api_vitals():
     if not INFLUX_TOKEN:
-        return jsonify({"error": "INFLUXDB_TOKEN is not set. "
-                                 "Source the .env before starting."}), 500
+        return jsonify({"error": "INFLUXDB_TOKEN is not set. Copy "
+                                 ".env.example to .env and fill it in."}), 500
     try:
         return jsonify(build_vitals())
     except requests.exceptions.RequestException as e:
@@ -511,6 +536,14 @@ from(bucket: "{INFLUX_BUCKET}")
     return jsonify(out)
 
 
+@app.route("/favicon.ico")
+def favicon():
+    """Browsers request /favicon.ico from the site root regardless of the
+    <link> tags, so serve it there too rather than logging a 404 every load."""
+    return send_from_directory(os.path.join(HERE, "static"), "favicon.ico",
+                               mimetype="image/vnd.microsoft.icon")
+
+
 @app.route("/api/health")
 def api_health():
     return jsonify({
@@ -529,7 +562,8 @@ if __name__ == "__main__":
     print("=" * 62)
     print(f"  influx     : {INFLUX_URL}")
     print(f"  bucket/org : {INFLUX_BUCKET} / {INFLUX_ORG}")
-    print(f"  token      : {'present' if INFLUX_TOKEN else 'MISSING -- source .env'}")
+    print(f"  token      : "
+          f"{'present' if INFLUX_TOKEN else 'MISSING -- cp .env.example .env'}")
     print(f"  classified : {len(CLASSES)} fields")
     print(f"  cadence    : {len(CADENCE)} fields"
           f"{'  <-- run tools/collect_cadence.py' if not CADENCE else ''}")
