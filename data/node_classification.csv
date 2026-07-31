@@ -1,0 +1,162 @@
+field_name,opcua_identifier,namespace,class,canary,t_change_alarm_sec,notes
+Hwid,SRTM.Hwid,2,STATIC,N,,board identity string
+Fwvers,SRTM.Fwvers,2,STATIC,N,,board identity string
+Swvers,SRTM.Swvers,2,STATIC,N,,board identity string
+SRTM_v00,SRTM.SRTM_v00,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_v01,SRTM.SRTM_v01,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_v02,SRTM.SRTM_v02,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_v03,SRTM.SRTM_v03,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_v04,SRTM.SRTM_v04,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_v05,SRTM.SRTM_v05,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_v06,SRTM.SRTM_v06,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_v07,SRTM.SRTM_v07,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_c00,SRTM.SRTM_c00,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_c01,SRTM.SRTM_c01,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_c02,SRTM.SRTM_c02,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_c03,SRTM.SRTM_c03,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_c04,SRTM.SRTM_c04,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_c05,SRTM.SRTM_c05,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_c06,SRTM.SRTM_c06,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_c07,SRTM.SRTM_c07,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_t00,SRTM.SRTM_t00,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_t01,SRTM.SRTM_t01,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_t02,SRTM.SRTM_t02,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_t03,SRTM.SRTM_t03,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_t04,SRTM.SRTM_t04,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_t05,SRTM.SRTM_t05,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_t06,SRTM.SRTM_t06,2,ANALOG,N,120,continuous sensor; should jitter
+SRTM_t07,SRTM.SRTM_t07,2,ANALOG,N,120,continuous sensor; should jitter
+FF11_present,SRTM.FF11_present,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF11_status,SRTM.FF11_status,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF11_txdisable,SRTM.FF11_txdisable,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF11_cdrenable,SRTM.FF11_cdrenable,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF11_cdrrate,SRTM.FF11_cdrrate,2,DISCRETE,N,,flag/bitfield; flat is normal
+F11_cdrlol,SRTM.FF11_cdrlol,2,DISCRETE,N,,flag/bitfield; flat is normal | NAME/IDENT MISMATCH in upstream conf
+FF11_los,SRTM.FF11_los,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF11_txfault,SRTM.FF11_txfault,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF11_tempfault,SRTM.FF11_tempfault,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF11_voltfault,SRTM.FF11_voltfault,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF11_powerfault,SRTM.FF11_powerfault,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF11_uptime,SRTM.FF11_uptime,2,COUNTER,Y,30,monotonic; must always advance
+FF11_tempC,SRTM.FF11_tempC,2,ANALOG,N,120,continuous sensor; should jitter
+FF11_rxpower_0,SRTM.FF11_rxpower_0,2,ANALOG,N,120,continuous sensor; should jitter
+FF11_rxpower_1,SRTM.FF11_rxpower_1,2,ANALOG,N,120,continuous sensor; should jitter
+FF11_rxpower_2,SRTM.FF11_rxpower_2,2,ANALOG,N,120,continuous sensor; should jitter
+FF11_rxpower_3,SRTM.FF11_rxpower_3,2,ANALOG,N,120,continuous sensor; should jitter
+FF11_id,SRTM.FF11_id,2,STATIC,N,,module identity string
+FF11_model,SRTM.FF11_model,2,STATIC,N,,module identity string
+FF11_serial,SRTM.FF11_serial,2,STATIC,N,,module identity string
+FF11_fwversion,SRTM.FF11_fwversion,2,STATIC,N,,module identity string
+FF12_present,SRTM.FF12_present,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF12_status,SRTM.FF12_status,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF12_txdisable,SRTM.FF12_txdisable,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF12_cdrenable,SRTM.FF12_cdrenable,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF12_cdrrate,SRTM.FF12_cdrrate,2,DISCRETE,N,,flag/bitfield; flat is normal
+F12_cdrlol,SRTM.FF12_cdrlol,2,DISCRETE,N,,flag/bitfield; flat is normal | NAME/IDENT MISMATCH in upstream conf
+FF12_los,SRTM.FF12_los,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF12_txfault,SRTM.FF12_txfault,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF12_tempfault,SRTM.FF12_tempfault,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF12_voltfault,SRTM.FF12_voltfault,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF12_powerfault,SRTM.FF12_powerfault,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF12_uptime,SRTM.FF12_uptime,2,COUNTER,Y,30,monotonic; must always advance
+FF12_tempC,SRTM.FF12_tempC,2,ANALOG,N,120,continuous sensor; should jitter
+FF12_rxpower_0,SRTM.FF12_rxpower_0,2,ANALOG,N,120,continuous sensor; should jitter
+FF12_rxpower_1,SRTM.FF12_rxpower_1,2,ANALOG,N,120,continuous sensor; should jitter
+FF12_rxpower_2,SRTM.FF12_rxpower_2,2,ANALOG,N,120,continuous sensor; should jitter
+FF12_rxpower_3,SRTM.FF12_rxpower_3,2,ANALOG,N,120,continuous sensor; should jitter
+FF12_id,SRTM.FF12_id,2,STATIC,N,,module identity string
+FF12_model,SRTM.FF12_model,2,STATIC,N,,module identity string
+FF12_serial,SRTM.FF12_serial,2,STATIC,N,,module identity string
+FF12_fwversion,SRTM.FF12_fwversion,2,STATIC,N,,module identity string
+FF13_present,SRTM.FF13_present,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF13_status,SRTM.FF13_status,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF13_txdisable,SRTM.FF13_txdisable,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF13_cdrenable,SRTM.FF13_cdrenable,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF13_cdrrate,SRTM.FF13_cdrrate,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF13_cdrlol,SRTM.FF13_cdrlol,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF13_los,SRTM.FF13_los,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF13_txfault,SRTM.FF13_txfault,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF13_tempfault,SRTM.FF13_tempfault,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF13_voltfault,SRTM.FF13_voltfault,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF13_powerfault,SRTM.FF13_powerfault,2,DISCRETE,N,,flag/bitfield; flat is normal
+FF13_uptime,SRTM.FF13_uptime,2,COUNTER,Y,30,monotonic; must always advance
+FF13_tempC,SRTM.FF13_tempC,2,ANALOG,N,120,continuous sensor; should jitter
+FF13_rxpower_0,SRTM.FF13_rxpower_0,2,ANALOG,N,120,continuous sensor; should jitter
+FF13_rxpower_1,SRTM.FF13_rxpower_1,2,ANALOG,N,120,continuous sensor; should jitter
+FF13_rxpower_2,SRTM.FF13_rxpower_2,2,ANALOG,N,120,continuous sensor; should jitter
+FF13_rxpower_3,SRTM.FF13_rxpower_3,2,ANALOG,N,120,continuous sensor; should jitter
+FF13_id,SRTM.FF13_id,2,STATIC,N,,module identity string
+FF13_model,SRTM.FF13_model,2,STATIC,N,,module identity string
+FF13_serial,SRTM.FF13_serial,2,STATIC,N,,module identity string
+FF13_fwversion,SRTM.FF13_fwversion,2,STATIC,N,,module identity string
+FPGA_up,SRTM.FPGA_up,2,DISCRETE,N,,flag/bitfield; flat is normal
+FPGA_temp,SRTM.FPGA_temp,2,ANALOG,N,120,continuous sensor; should jitter
+FPGA_vint,SRTM.FPGA_vint,2,ANALOG,N,120,continuous sensor; should jitter
+FPGA_vaux,SRTM.FPGA_vaux,2,ANALOG,N,120,continuous sensor; should jitter
+FPGA_vbram,SRTM.FPGA_vbram,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_ps_temp,SRTM.Zynq_ps_temp,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_pl_temp,SRTM.Zynq_pl_temp,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_pspll0,SRTM.Zynq_vcc_pspll0,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vccint,SRTM.Zynq_vccint,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vccbram,SRTM.Zynq_vccbram,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vccaux,SRTM.Zynq_vccaux,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_psddrpll,SRTM.Zynq_vcc_psddrpll,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_psintfp_ddr,SRTM.Zynq_vcc_psintfp_ddr,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_ps_lpd1,SRTM.Zynq_vcc_ps_lpd1,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_ps_lpd2,SRTM.Zynq_vcc_ps_lpd2,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_ps_aux3,SRTM.Zynq_ps_aux3,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_ddr_io,SRTM.Zynq_vcc_ddr_io,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_ps_bank_503,SRTM.Zynq_ps_bank_503,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_ps_bank_500,SRTM.Zynq_ps_bank_500,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc0_psi01_1,SRTM.Zynq_vcc0_psi01_1,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc0_psi01_2,SRTM.Zynq_vcc0_psi01_2,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_ps_gtr,SRTM.Zynq_vcc_ps_gtr,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vtt_ps_gtr,SRTM.Zynq_vtt_ps_gtr,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_ps_adc,SRTM.Zynq_vcc_ps_adc,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_pl_int,SRTM.Zynq_vcc_pl_int,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_pl_aux,SRTM.Zynq_vcc_pl_aux,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vref_p,SRTM.Zynq_vref_p,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vref_n,SRTM.Zynq_vref_n,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_pl_bram,SRTM.Zynq_vcc_pl_bram,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_ps_intlp4,SRTM.Zynq_vcc_ps_intlp4,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_ps_intfp5,SRTM.Zynq_vcc_ps_intfp5,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_ps_aux,SRTM.Zynq_vcc_ps_aux,2,ANALOG,N,120,continuous sensor; should jitter
+Zynq_vcc_pl_adc,SRTM.Zynq_vcc_pl_adc,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_id,SRTM.IPMC_id,2,STATIC,N,,module identity string
+IPMC_i2cVer,SRTM.IPMC_i2cVer,2,STATIC,N,,IPMC version string
+IPMC_rev,SRTM.IPMC_rev,2,STATIC,N,,IPMC version string
+IPMC_ver,SRTM.IPMC_ver,2,STATIC,N,,IPMC version string
+IPMC_seq,SRTM.IPMC_seq,2,COUNTER,Y,30,monotonic; must always advance
+IPMC_status,SRTM.IPMC_status,2,DISCRETE,N,,flag/bitfield; flat is normal
+IPMC_rawtime,SRTM.IPMC_rawtime,2,COUNTER,Y,30,monotonic; must always advance
+IPMC_time,SRTM.IPMC_time,2,COUNTER,Y,30,monotonic; must always advance
+IPMC_iQ_I,SRTM.IPMC_iQ_I,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_iQ_VA,SRTM.IPMC_iQ_VA,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_iQ_VB,SRTM.IPMC_iQ_VB,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_iQ_T,SRTM.IPMC_iQ_T,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_PCF_al,SRTM.IPMC_PCF_al,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_PCF_ah,SRTM.IPMC_PCF_ah,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_PCF_bl_V,SRTM.IPMC_PCF_bl_V,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_PCF_bh_I,SRTM.IPMC_PCF_bh_I,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_TMP100_fb,SRTM.IPMC_TMP100_fb,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_TMP100_bb,SRTM.IPMC_TMP100_bb,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_TMP100_ft,SRTM.IPMC_TMP100_ft,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_TMP100_bt,SRTM.IPMC_TMP100_bt,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_TMP100_z,SRTM.IPMC_TMP100_z,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_6A_V,SRTM.IPMC_LTC_6A_V,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_6A_I,SRTM.IPMC_LTC_6A_I,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_6A_T,SRTM.IPMC_LTC_6A_T,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_67_V,SRTM.IPMC_LTC_67_V,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_67_I,SRTM.IPMC_LTC_67_I,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_6B_V,SRTM.IPMC_LTC_6B_V,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_6B_I,SRTM.IPMC_LTC_6B_I,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_6D_V1,SRTM.IPMC_LTC_6D_V1,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_6D_I1,SRTM.IPMC_LTC_6D_I1,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_69_V,SRTM.IPMC_LTC_69_V,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_69_I,SRTM.IPMC_LTC_69_I,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_6C_V,SRTM.IPMC_LTC_6C_V,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_6C_I,SRTM.IPMC_LTC_6C_I,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_6D_V2,SRTM.IPMC_LTC_6D_V2,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_6D_I2,SRTM.IPMC_LTC_6D_I2,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_6E_V,SRTM.IPMC_LTC_6E_V,2,ANALOG,N,120,continuous sensor; should jitter
+IPMC_LTC_6E_I,SRTM.IPMC_LTC_6E_I,2,ANALOG,N,120,continuous sensor; should jitter

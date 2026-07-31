@@ -1,0 +1,90 @@
+<svg width="680" height="430" viewBox="0 0 680 430" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>srtm-quickboot-vitals development topology</title>
+<desc>GitHub holds the repo. bigmem3 runs the VS Code server, Flask on port 5055, and Cheu's InfluxDB on port 8096. The Windows machine runs only a browser, connected over the UA VPN.</desc>
+
+<style>
+  .t  { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 500; }
+  .s  { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 400; }
+
+  .gray-f   { fill: #F1EFE8; stroke: #5F5E5A; }
+  .gray-t   { fill: #2C2C2A; }
+  .gray-s   { fill: #5F5E5A; }
+  .teal-f   { fill: #E1F5EE; stroke: #0F6E56; }
+  .teal-t   { fill: #04342C; }
+  .teal-s   { fill: #0F6E56; }
+  .purple-f { fill: #EEEDFE; stroke: #534AB7; }
+  .purple-t { fill: #26215C; }
+  .purple-s { fill: #534AB7; }
+  .amber-f  { fill: #FAEEDA; stroke: #854F0B; }
+  .amber-t  { fill: #412402; }
+  .amber-s  { fill: #854F0B; }
+  .blue-f   { fill: #E6F1FB; stroke: #185FA5; }
+  .blue-t   { fill: #042C53; }
+  .blue-s   { fill: #185FA5; }
+  .line     { stroke: #73726C; fill: none; }
+  .line-t   { fill: #5F5E5A; }
+
+  @media (prefers-color-scheme: dark) {
+    .gray-f   { fill: #444441; stroke: #B4B2A9; }
+    .gray-t   { fill: #D3D1C7; }
+    .gray-s   { fill: #B4B2A9; }
+    .teal-f   { fill: #085041; stroke: #5DCAA5; }
+    .teal-t   { fill: #9FE1CB; }
+    .teal-s   { fill: #5DCAA5; }
+    .purple-f { fill: #3C3489; stroke: #AFA9EC; }
+    .purple-t { fill: #CECBF6; }
+    .purple-s { fill: #AFA9EC; }
+    .amber-f  { fill: #633806; stroke: #EF9F27; }
+    .amber-t  { fill: #FAC775; }
+    .amber-s  { fill: #EF9F27; }
+    .blue-f   { fill: #0C447C; stroke: #85B7EB; }
+    .blue-t   { fill: #B5D4F4; }
+    .blue-s   { fill: #85B7EB; }
+    .line     { stroke: #9C9A92; }
+    .line-t   { fill: #B4B2A9; }
+  }
+</style>
+
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+
+<rect class="gray-f" x="40" y="40" width="180" height="56" rx="8" stroke-width="0.5"/>
+<text class="t gray-t" x="130" y="62" text-anchor="middle" dominant-baseline="central">GitHub</text>
+<text class="s gray-s" x="130" y="80" text-anchor="middle" dominant-baseline="central">srtm-quickboot-vitals</text>
+
+<rect class="teal-f" x="300" y="30" width="340" height="290" rx="20" stroke-width="0.5"/>
+<text class="t teal-t" x="470" y="54" text-anchor="middle" dominant-baseline="central">bigmem3</text>
+<text class="s teal-s" x="470" y="72" text-anchor="middle" dominant-baseline="central">everything runs here</text>
+
+<rect class="purple-f" x="325" y="95" width="290" height="56" rx="8" stroke-width="0.5"/>
+<text class="t purple-t" x="470" y="115" text-anchor="middle" dominant-baseline="central">VS Code server</text>
+<text class="s purple-s" x="470" y="133" text-anchor="middle" dominant-baseline="central">edits the working copy</text>
+
+<rect class="purple-f" x="325" y="171" width="290" height="56" rx="8" stroke-width="0.5"/>
+<text class="t purple-t" x="470" y="191" text-anchor="middle" dominant-baseline="central">Flask · 5055</text>
+<text class="s purple-s" x="470" y="209" text-anchor="middle" dominant-baseline="central">holds the token</text>
+
+<rect class="amber-f" x="325" y="247" width="290" height="56" rx="8" stroke-width="0.5"/>
+<text class="t amber-t" x="470" y="267" text-anchor="middle" dominant-baseline="central">InfluxDB · 8096</text>
+<text class="s amber-s" x="470" y="285" text-anchor="middle" dominant-baseline="central">Cheu's stack, read only</text>
+
+<rect class="blue-f" x="40" y="171" width="180" height="56" rx="8" stroke-width="0.5"/>
+<text class="t blue-t" x="130" y="191" text-anchor="middle" dominant-baseline="central">Windows box</text>
+<text class="s blue-s" x="130" y="209" text-anchor="middle" dominant-baseline="central">browser only</text>
+
+<line class="line" x1="220" y1="68" x2="440" y2="68" marker-end="url(#arrow)"/>
+<line class="line" x1="130" y1="171" x2="130" y2="100" marker-end="url(#arrow)"/>
+<line class="line" x1="220" y1="199" x2="317" y2="199" marker-end="url(#arrow)"/>
+<line class="line" x1="470" y1="151" x2="470" y2="167" marker-end="url(#arrow)"/>
+<line class="line" x1="470" y1="227" x2="470" y2="243" marker-end="url(#arrow)"/>
+
+<text class="s line-t" x="268" y="186" text-anchor="middle" dominant-baseline="central">VPN</text>
+<text class="s line-t" x="268" y="214" text-anchor="middle" dominant-baseline="central">tunnel</text>
+
+<rect class="gray-f" x="40" y="345" width="600" height="50" rx="8" stroke-width="0.5"/>
+<text class="s gray-s" x="340" y="362" text-anchor="middle" dominant-baseline="central">The Windows box never talks to InfluxDB and never holds the token.</text>
+<text class="s gray-s" x="340" y="380" text-anchor="middle" dominant-baseline="central">One working copy on bigmem3 — no local clone, no drift.</text>
+</svg>
