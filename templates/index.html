@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/vitals.css">
+<link rel="stylesheet" href="static/vitals.css">
 </head>
 <body data-poll="{{ poll_interval }}">
 
@@ -18,13 +18,27 @@
     <h1>SRTM<span>·</span>QUICKBOOT VITALS</h1>
     <p class="sub">read-only tap on the TIG pipeline &mdash; nothing written, nothing restarted</p>
   </div>
-  <div class="hdr-lamp" id="lamp" data-state="init">
-    <span class="lamp-dot"></span>
-    <span class="lamp-txt" id="lampTxt">INITIALISING</span>
+  <div class="hdr-right">
+    <button class="help-btn" id="helpBtn" aria-label="open glossary">? HELP</button>
+    <div class="hdr-lamp" id="lamp" data-state="init">
+      <span class="lamp-dot"></span>
+      <span class="lamp-txt" id="lampTxt">INITIALISING</span>
+    </div>
   </div>
 </header>
 
-<!-- ── THE THREE CLOCKS ───────────────────────────────────────────── -->
+<section class="heat" aria-label="channel cadence map">
+  <div class="heat-hd">
+    <h2>CADENCE MAP</h2>
+    <p>one cell per channel &mdash; colour is how far behind its <em>own</em> normal rhythm it is</p>
+    <div class="heat-legend" id="heatLegend"></div>
+  </div>
+  <div class="heat-grid" id="heatGrid">
+    <div class="empty">waiting for first poll&hellip;</div>
+  </div>
+  <div class="heat-tip" id="heatTip" hidden></div>
+</section>
+
 <section class="clocks" aria-label="staleness clocks">
   <div class="clock" id="clkPoll" data-state="init">
     <div class="clk-k">t_poll</div>
@@ -43,7 +57,6 @@
   </div>
 </section>
 
-<!-- ── SIGNATURE: THE CANARY STRIP ────────────────────────────────── -->
 <section class="canary" aria-label="canary counters">
   <div class="canary-hd">
     <h2>CANARY COUNTERS</h2>
@@ -54,35 +67,139 @@
   </div>
 </section>
 
-<!-- ── PROGRESS / REFRESH ─────────────────────────────────────────── -->
 <div class="bar-wrap">
   <div class="bar" id="bar"></div>
   <div class="bar-txt" id="barTxt">&nbsp;</div>
 </div>
 
-<!-- ── CHANNEL GRID ───────────────────────────────────────────────── -->
 <section class="grid-sec">
-  <div class="filters" id="filters">
-    <button data-f="ALL" class="on">ALL</button>
-    <button data-f="COUNTER">COUNTER</button>
-    <button data-f="ANALOG">ANALOG</button>
-    <button data-f="DISCRETE">DISCRETE</button>
-    <button data-f="STATIC">STATIC</button>
-    <span class="spacer"></span>
-    <button data-f="ALARM" class="alarm-f">FLAGGED ONLY</button>
+  <div class="controls">
+    <input id="search" type="search" placeholder="search channels &mdash; try FPGA, IPMC, FF11, temp&hellip;"
+           autocomplete="off" spellcheck="false" aria-label="search channels">
+    <div class="filters" id="filters">
+      <button data-f="ALL" class="on">ALL</button>
+      <button data-f="COUNTER">COUNTER</button>
+      <button data-f="ANALOG">ANALOG</button>
+      <button data-f="DISCRETE">DISCRETE</button>
+      <button data-f="STATIC">STATIC</button>
+      <button data-f="ALARM" class="alarm-f">FLAGGED</button>
+    </div>
   </div>
   <div class="grid" id="grid"></div>
 </section>
 
 <footer class="ftr">
   <span id="ftrMeta">&mdash;</span>
-  <span class="ftr-note">
-    &sigma; is displayed, not alarmed &mdash; per-channel baselines from history required first
-  </span>
+  <span>&sigma; is displayed, not alarmed &mdash; per-channel baselines from history required first</span>
 </footer>
 
 <div class="err" id="err" hidden></div>
 
-<script src="/static/vitals.js"></script>
+<div class="ov" id="helpOv" hidden>
+  <div class="dt" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="dt-hd">
+      <div><h3 id="helpTitle">GLOSSARY</h3>
+        <p>what the numbers on this page actually mean</p></div>
+      <button class="dt-x" id="helpX" aria-label="close glossary">CLOSE &times;</button>
+    </div>
+    <div class="gl">
+
+      <h4>The question this page answers</h4>
+      <p>A value on a screen carries no evidence of its own freshness. A frozen
+      board and a healthy one both render as numbers. Everything here exists to
+      tell those two apart.</p>
+
+      <h4>t_poll</h4>
+      <p>Seconds since Telegraf last wrote <em>anything</em> to InfluxDB.
+      Catches a dead pipeline &mdash; container stopped, VPN dropped, collector
+      crashed. <strong>Blind to a frozen board</strong>: Telegraf writes on a
+      5&nbsp;second schedule whether or not the value moved, so a stuck board
+      still produces a healthy-looking t_poll forever. This is why one clock
+      is not enough.</p>
+
+      <h4>t_change (t&Delta;)</h4>
+      <p>Seconds since a channel's value last actually <em>differed</em>.
+      Catches the frozen board, the wedged OPC UA server, the stalled IPMC.
+      Derived from value transitions, not timestamps &mdash; so it works
+      correctly even though Telegraf polls rather than subscribes.</p>
+
+      <h4>t_wincc</h4>
+      <p>Not yet built (mk_1). Would measure how long since the WinCC
+      datapoint for the same channel changed. <strong>t_change small +
+      t_wincc large = the panel is stale over live data</strong>, which is the
+      bug this project was started to catch.</p>
+
+      <h4>Canary counters</h4>
+      <p>Six monotonic counters &mdash; <code>FF11/12/13_uptime</code>,
+      <code>IPMC_seq</code>, <code>IPMC_rawtime</code>, <code>IPMC_time</code>.
+      They only ever count upward, so one that stops advancing is
+      unambiguously frozen. Most channels can't do this job: a voltage rail
+      may sit flat and be perfectly healthy. The canaries have no benign
+      reading, which is what makes them the liveness oracle.</p>
+
+      <h4>Cadence map</h4>
+      <p>One cell per channel. Colour is <code>t_change &divide; that
+      channel's own baseline interval</code> &mdash; a ratio, not a fixed
+      number of seconds. A 5&nbsp;second voltage rail and a 15&nbsp;minute
+      uptime counter are both green when healthy. Baselines come from
+      <code>tools/build_baseline.py</code>, measured against real history.</p>
+      <ul>
+        <li><b class="k-green">green</b> &mdash; changing on schedule</li>
+        <li><b class="k-yellow">yellow</b> &mdash; lagging its normal rhythm</li>
+        <li><b class="k-orange">orange</b> &mdash; well overdue</li>
+        <li><b class="k-red">red</b> &mdash; effectively stopped</li>
+        <li><b class="k-static">static</b> &mdash; identity string, never expected to change</li>
+        <li><b class="k-nobase">no base</b> &mdash; no baseline yet; run the baseline tool</li>
+      </ul>
+
+      <h4>Channel classes</h4>
+      <ul>
+        <li><b>COUNTER</b> &mdash; monotonic. The canaries. Unambiguous when stopped.</li>
+        <li><b>ANALOG</b> &mdash; continuous sensor. Should jitter. Flat is suspicious but not proof.</li>
+        <li><b>DISCRETE</b> &mdash; flag or bitfield. Flat for hours is <em>correct</em>.</li>
+        <li><b>STATIC</b> &mdash; identity string. Never changes by design.</li>
+      </ul>
+
+      <h4>&mu; and &sigma;</h4>
+      <p>Rolling mean and standard deviation over the window. &sigma; is a
+      second liveness sensor: a frozen analog channel has &sigma; exactly
+      zero. It is <strong>displayed but never alarmed</strong>, because
+      &sigma;=0 is equally consistent with a genuinely quiet rail, or one
+      whose ADC step is coarse relative to its real noise. Alarming on it
+      needs a per-channel healthy baseline first.</p>
+      <p>&mu; answers a different question &mdash; drift, not liveness. A
+      board slowly heating shows in &mu;, not &sigma;.</p>
+
+      <h4>Read-only</h4>
+      <p>Every query here is a read against Prof. Cheu's production TIG stack.
+      Nothing is written, no container is restarted, no config is edited.</p>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov" hidden>
+  <div class="dt" role="dialog" aria-modal="true" aria-labelledby="dtName">
+    <div class="dt-hd">
+      <div>
+        <h3 id="dtName">&mdash;</h3>
+        <p id="dtSub">&mdash;</p>
+      </div>
+      <button class="dt-x" id="dtX" aria-label="close detail">CLOSE &times;</button>
+    </div>
+    <div class="dt-stats" id="dtStats"></div>
+    <div class="dt-rng" id="dtRng">
+      <span>window</span>
+      <button data-m="30" class="on">30m</button>
+      <button data-m="180">3h</button>
+      <button data-m="720">12h</button>
+      <button data-m="1440">24h</button>
+      <button data-m="10080">7d</button>
+    </div>
+    <canvas id="plot"></canvas>
+    <p class="dt-note" id="dtNote"></p>
+  </div>
+</div>
+
+<script src="static/vitals.js"></script>
 </body>
 </html>

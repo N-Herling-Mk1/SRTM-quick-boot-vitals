@@ -26,13 +26,12 @@ THE THREE CLOCKS
 
 import csv
 import os
-import io
 import time
 import statistics
 from collections import defaultdict
 
 import requests
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 # ----------------------------------------------------------------- config
 INFLUX_URL    = os.environ.get("INFLUX_URL", "http://127.0.0.1:8096")
@@ -47,10 +46,18 @@ POLL_INTERVAL = int(os.environ.get("VITALS_POLL_SEC", "5"))
 
 # thresholds (seconds) -- provisional, see three_clock_spec.txt sec 3
 T_POLL_WARN,   T_POLL_ALARM   = 15, 60
+
+# Heat map: ratio = t_change / this channel's own baseline interval.
+# Dimensionless on purpose -- a 5s rail and a 15min counter are both
+# "green" when behaving normally, with no per-channel constants.
+HEAT_YELLOW = float(os.environ.get("VITALS_HEAT_YELLOW", "2"))
+HEAT_ORANGE = float(os.environ.get("VITALS_HEAT_ORANGE", "5"))
+HEAT_RED    = float(os.environ.get("VITALS_HEAT_RED",    "20"))
 T_CHANGE_WARN, T_CHANGE_ALARM = 30, 120
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CLASS_CSV = os.path.join(HERE, "data", "node_classification.csv")
+BASE_CSV  = os.path.join(HERE, "data", "change_baseline.csv")
 
 app = Flask(__name__)
 
@@ -69,12 +76,74 @@ def load_classification():
     return table
 
 
-CLASSES = load_classification()
+def load_baseline():
+    """field -> baseline change interval in seconds, from tools/build_baseline.py.
+
+    Absent file is not an error: the heat map simply reports 'nobase' for
+    every channel and the rest of the page is unaffected.
+    """
+    table = {}
+    if not os.path.exists(BASE_CSV):
+        return table
+    with open(BASE_CSV, newline="") as f:
+        for row in csv.DictReader(f):
+            raw = (row.get("baseline_interval_sec") or "").strip()
+            if not raw:
+                continue
+            try:
+                iv = float(raw)
+            except ValueError:
+                continue
+            if iv > 0:
+                table[row["field_name"]] = iv
+    return table
+
+
+CLASSES  = load_classification()
+BASELINE = load_baseline()
+
+
+def heat_of(field, cls, t_change, window_sec):
+    """Colour band for one channel, relative to its own cadence.
+
+    Returns (band, ratio). Bands: green | yellow | orange | red |
+    static (never expected to change) | nobase (no baseline available).
+    """
+    if cls in ("STATIC",):
+        return "static", None
+    iv = BASELINE.get(field)
+    if not iv:
+        return "nobase", None
+    # No transition seen in the window -> it has been at least this long.
+    effective = t_change if t_change is not None else window_sec
+    ratio = effective / iv
+    if ratio <= HEAT_YELLOW:
+        band = "green"
+    elif ratio <= HEAT_ORANGE:
+        band = "yellow"
+    elif ratio <= HEAT_RED:
+        band = "orange"
+    else:
+        band = "red"
+    return band, round(ratio, 2)
 
 
 # ------------------------------------------------------------------- influx
 def flux(query):
-    """POST a Flux query, return parsed CSV rows. Read-only by construction."""
+    """POST a Flux query, return parsed rows. Read-only by construction.
+
+    InfluxDB returns ANNOTATED CSV, not plain CSV:
+      - '#group' / '#datatype' / '#default' comment lines before each table
+      - a leading empty annotation column on every row
+      - a FRESH header row for every result table
+      - blank lines separating tables
+
+    csv.DictReader on the raw body treats the first line as the schema and
+    every later header row as data, which is how the literal string '_time'
+    ends up being handed to the date parser. Parse defensively instead:
+    reset the header at each table boundary and drop repeated headers.
+    The empty annotation column simply maps to the key '' and is ignored.
+    """
     r = requests.post(
         f"{INFLUX_URL}/api/v2/query",
         params={"org": INFLUX_ORG},
@@ -87,7 +156,35 @@ def flux(query):
         timeout=30,
     )
     r.raise_for_status()
-    return list(csv.DictReader(io.StringIO(r.text)))
+
+    rows, header = [], None
+    for raw in r.text.splitlines():
+        line = raw.rstrip("\r")
+        if not line.strip():
+            header = None          # blank line ends the current table
+            continue
+        if line.lstrip().startswith("#"):
+            continue               # annotation line
+        try:
+            parts = next(csv.reader([line]))
+        except StopIteration:
+            continue
+        if header is None:
+            header = parts         # first non-comment line of a table
+            continue
+        if parts == header:
+            continue               # repeated header
+        rows.append(dict(zip(header, parts)))
+    return rows
+
+
+def safe_epoch(s):
+    """None instead of an exception. A single malformed row must never take
+    down the whole endpoint."""
+    try:
+        return iso_to_epoch(s)
+    except (ValueError, TypeError, AttributeError):
+        return None
 
 
 def fetch_window():
@@ -104,6 +201,8 @@ from(bucket: "{INFLUX_BUCKET}")
         t     = row.get("_time")
         v     = row.get("_value")
         if not field or not t:
+            continue
+        if safe_epoch(t) is None:
             continue
         series[field].append((t, v))
     for f in series:
@@ -154,7 +253,7 @@ def build_vitals():
     for field, points in series.items():
         meta = CLASSES.get(field, {"class": "UNKNOWN", "canary": False,
                                    "notes": "not in classification csv"})
-        times  = [iso_to_epoch(t) for t, _ in points]
+        times  = [safe_epoch(t) for t, _ in points]
         raws   = [v for _, v in points]
         newest = times[-1] if times else None
         if newest and (last_write is None or newest > last_write):
@@ -183,7 +282,12 @@ def build_vitals():
             mean  = statistics.fmean(nums)
             sigma = statistics.pstdev(nums)
 
+        band, ratio = heat_of(field, meta["class"], t_change,
+                              WINDOW_MIN * 60.0)
         channels.append({
+            "heat":      band,
+            "ratio":     ratio,
+            "baseline":  BASELINE.get(field),
             "field":     field,
             "cls":       meta["class"],
             "canary":    meta["canary"],
@@ -211,6 +315,10 @@ def build_vitals():
     else:
         poll_state = "live"
 
+    heat_counts = {}
+    for c in channels:
+        heat_counts[c["heat"]] = heat_counts.get(c["heat"], 0) + 1
+
     canaries = [c for c in channels if c["canary"]]
     if not canaries:
         source_state = "unknown"
@@ -236,6 +344,10 @@ def build_vitals():
             "t_wincc_state": "not_implemented",
         },
         "counts":   {"total": len(channels)},
+        "heat":     heat_counts,
+        "heat_cuts": {"yellow": HEAT_YELLOW, "orange": HEAT_ORANGE,
+                      "red": HEAT_RED},
+        "baseline_fields": len(BASELINE),
         "channels": channels,
     }
 
@@ -259,6 +371,84 @@ def api_vitals():
         return jsonify({"error": f"{type(e).__name__}: {e}"}), 500
 
 
+@app.route("/api/channel/<field>")
+def api_channel(field):
+    """Full series for one channel, for the detail view's time plot.
+
+    Separate from /api/vitals deliberately: the grid needs 161 current
+    values, the detail view needs one channel's history. Pulling both in
+    one query would make every 5s poll drag the whole history across.
+    """
+    if not INFLUX_TOKEN:
+        return jsonify({"error": "INFLUXDB_TOKEN is not set."}), 500
+    try:
+        minutes = max(5, min(int(request.args.get("minutes", WINDOW_MIN)), 10080))
+    except (TypeError, ValueError):
+        minutes = WINDOW_MIN
+
+    safe = field.replace('"', '')
+    q = f'''
+from(bucket: "{INFLUX_BUCKET}")
+  |> range(start: -{minutes}m)
+  |> filter(fn: (r) => r._measurement == "{MEASUREMENT}" and r._field == "{safe}")
+  |> keep(columns: ["_time", "_value"])
+'''
+    try:
+        rows = flux(q)
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"InfluxDB unreachable: {e}"}), 502
+
+    pts = []
+    for r in rows:
+        t, v = r.get("_time"), r.get("_value")
+        e = safe_epoch(t) if t else None
+        if e is None:
+            continue
+        pts.append((e, v))
+    pts.sort(key=lambda p: p[0])
+
+    nums, numeric = [], True
+    for _, v in pts:
+        try:
+            nums.append(float(v))
+        except (TypeError, ValueError):
+            numeric = False
+            break
+
+    meta = CLASSES.get(field, {"class": "UNKNOWN", "canary": False, "notes": ""})
+    out = {
+        "field": field,
+        "cls": meta["class"],
+        "canary": meta["canary"],
+        "notes": meta["notes"],
+        "minutes": minutes,
+        "numeric": numeric,
+        "n": len(pts),
+        "series": [[p[0] * 1000, (nums[i] if numeric else None)]
+                   for i, p in enumerate(pts)],
+        "raw_last": pts[-1][1] if pts else None,
+    }
+    if numeric and len(nums) >= 2:
+        out.update({
+            "mean":  statistics.fmean(nums),
+            "sigma": statistics.pstdev(nums),
+            "min":   min(nums),
+            "max":   max(nums),
+        })
+    else:
+        out.update({"mean": None, "sigma": None, "min": None, "max": None})
+
+    t_change = None
+    if pts:
+        cur = pts[-1][1]
+        for i in range(len(pts) - 2, -1, -1):
+            if pts[i][1] != cur:
+                t_change = time.time() - pts[i + 1][0]
+                break
+    out["t_change"] = round(t_change, 1) if t_change is not None else None
+    return jsonify(out)
+
+
 @app.route("/api/health")
 def api_health():
     return jsonify({
@@ -267,6 +457,7 @@ def api_health():
         "org": INFLUX_ORG,
         "token_present": bool(INFLUX_TOKEN),
         "classified_fields": len(CLASSES),
+        "baseline_fields": len(BASELINE),
     })
 
 
@@ -278,6 +469,8 @@ if __name__ == "__main__":
     print(f"  bucket/org : {INFLUX_BUCKET} / {INFLUX_ORG}")
     print(f"  token      : {'present' if INFLUX_TOKEN else 'MISSING -- source .env'}")
     print(f"  classified : {len(CLASSES)} fields")
+    print(f"  baselines  : {len(BASELINE)} fields"
+          f"{'  <-- run tools/build_baseline.py' if not BASELINE else ''}")
     print(f"  window     : {WINDOW_MIN} min, min {MIN_SAMPLES} samples")
     print(f"  serving    : http://127.0.0.1:5055")
     print("=" * 62, flush=True)
