@@ -1,0 +1,176 @@
+field_name,class,window_days,n_gaps,gap_min_s,gap_p10_s,gap_med_s,gap_mean_s,gap_p90_s,gap_max_s,burstiness,notes
+F11_cdrlol,DISCRETE,1,0,,,,,,,,no value changes in window
+F12_cdrlol,DISCRETE,1,0,,,,,,,,no value changes in window
+FF11_cdrenable,DISCRETE,1,0,,,,,,,,no value changes in window
+FF11_cdrrate,DISCRETE,1,0,,,,,,,,no value changes in window
+FF11_fwversion,STATIC,1,,,,,,,,,non-numeric -- no change statistics
+FF11_id,STATIC,1,0,,,,,,,,no value changes in window
+FF11_los,DISCRETE,1,0,,,,,,,,no value changes in window
+FF11_model,STATIC,1,,,,,,,,,non-numeric -- no change statistics
+FF11_powerfault,DISCRETE,1,0,,,,,,,,no value changes in window
+FF11_present,DISCRETE,1,0,,,,,,,,no value changes in window
+FF11_rxpower_0,ANALOG,1,0,,,,,,,,no value changes in window
+FF11_rxpower_1,ANALOG,1,0,,,,,,,,no value changes in window
+FF11_rxpower_2,ANALOG,1,0,,,,,,,,no value changes in window
+FF11_rxpower_3,ANALOG,1,6491,5.0,5.0,5.0,13.308,30.0,135.0,6.0,
+FF11_serial,STATIC,1,,,,,,,,,non-numeric -- no change statistics
+FF11_status,DISCRETE,1,0,,,,,,,,no value changes in window
+FF11_tempC,ANALOG,1,3232,5.0,5.0,10.0,26.708,45.0,4275.0,4.5,
+FF11_tempfault,DISCRETE,1,0,,,,,,,,no value changes in window
+FF11_txdisable,DISCRETE,1,0,,,,,,,,no value changes in window
+FF11_txfault,DISCRETE,1,0,,,,,,,,no value changes in window
+FF11_uptime,COUNTER,1,11,7200.0,7200.0,7205.0,7203.636,7205.0,7205.0,1.0,
+FF11_voltfault,DISCRETE,1,0,,,,,,,,no value changes in window
+FF12_cdrenable,DISCRETE,1,0,,,,,,,,no value changes in window
+FF12_cdrrate,DISCRETE,1,0,,,,,,,,no value changes in window
+FF12_fwversion,STATIC,1,,,,,,,,,non-numeric -- no change statistics
+FF12_id,STATIC,1,0,,,,,,,,no value changes in window
+FF12_los,DISCRETE,1,0,,,,,,,,no value changes in window
+FF12_model,STATIC,1,,,,,,,,,non-numeric -- no change statistics
+FF12_powerfault,DISCRETE,1,0,,,,,,,,no value changes in window
+FF12_present,DISCRETE,1,0,,,,,,,,no value changes in window
+FF12_rxpower_0,ANALOG,1,10643,5.0,5.0,5.0,8.117,15.0,130.0,3.0,
+FF12_rxpower_1,ANALOG,1,11691,5.0,5.0,5.0,7.389,15.0,50.0,3.0,
+FF12_rxpower_2,ANALOG,1,12926,5.0,5.0,5.0,6.683,10.0,45.0,2.0,
+FF12_rxpower_3,ANALOG,1,14681,5.0,5.0,5.0,5.884,10.0,35.0,2.0,
+FF12_serial,STATIC,1,,,,,,,,,non-numeric -- no change statistics
+FF12_status,DISCRETE,1,0,,,,,,,,no value changes in window
+FF12_tempC,ANALOG,1,1205,5.0,5.0,10.0,70.697,110.0,7640.0,11.0,
+FF12_tempfault,DISCRETE,1,0,,,,,,,,no value changes in window
+FF12_txdisable,DISCRETE,1,0,,,,,,,,no value changes in window
+FF12_txfault,DISCRETE,1,0,,,,,,,,no value changes in window
+FF12_uptime,COUNTER,1,11,7205.0,7205.0,7205.0,7205.909,7210.0,7210.0,1.0,
+FF12_voltfault,DISCRETE,1,0,,,,,,,,no value changes in window
+FF13_cdrenable,DISCRETE,1,0,,,,,,,,no value changes in window
+FF13_cdrlol,DISCRETE,1,0,,,,,,,,no value changes in window
+FF13_cdrrate,DISCRETE,1,0,,,,,,,,no value changes in window
+FF13_fwversion,STATIC,1,,,,,,,,,non-numeric -- no change statistics
+FF13_id,STATIC,1,0,,,,,,,,no value changes in window
+FF13_los,DISCRETE,1,0,,,,,,,,no value changes in window
+FF13_model,STATIC,1,,,,,,,,,non-numeric -- no change statistics
+FF13_powerfault,DISCRETE,1,0,,,,,,,,no value changes in window
+FF13_present,DISCRETE,1,0,,,,,,,,no value changes in window
+FF13_rxpower_0,ANALOG,1,8763,5.0,5.0,5.0,9.858,20.0,100.0,4.0,
+FF13_rxpower_1,ANALOG,1,10526,5.0,5.0,5.0,8.205,15.0,55.0,3.0,
+FF13_rxpower_2,ANALOG,1,10181,5.0,5.0,5.0,8.484,15.0,65.0,3.0,
+FF13_rxpower_3,ANALOG,1,211,5.0,5.0,5.0,407.844,1258.0,4010.0,251.6,
+FF13_serial,STATIC,1,,,,,,,,,non-numeric -- no change statistics
+FF13_status,DISCRETE,1,0,,,,,,,,no value changes in window
+FF13_tempC,ANALOG,1,5119,5.0,5.0,10.0,16.876,30.0,1030.0,3.0,
+FF13_tempfault,DISCRETE,1,0,,,,,,,,no value changes in window
+FF13_txdisable,DISCRETE,1,0,,,,,,,,no value changes in window
+FF13_txfault,DISCRETE,1,0,,,,,,,,no value changes in window
+FF13_uptime,COUNTER,1,11,7200.0,7200.0,7200.0,7201.818,7205.0,7205.0,1.0,
+FF13_voltfault,DISCRETE,1,0,,,,,,,,no value changes in window
+FPGA_temp,ANALOG,1,17178,5.0,5.0,5.0,5.029,5.0,10.0,1.0,
+FPGA_up,DISCRETE,1,17278,5.0,5.0,5.0,5.0,5.0,5.0,1.0,
+FPGA_vaux,ANALOG,1,14044,5.0,5.0,5.0,6.151,10.0,35.0,2.0,
+FPGA_vbram,ANALOG,1,13912,5.0,5.0,5.0,6.21,10.0,35.0,2.0,
+FPGA_vint,ANALOG,1,14312,5.0,5.0,5.0,6.036,10.0,35.0,2.0,
+Fwvers,STATIC,1,0,,,,,,,,no value changes in window
+Hwid,STATIC,1,0,,,,,,,,no value changes in window
+IPMC_LTC_67_I,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_67_V,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_69_I,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_69_V,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_6A_I,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_6A_T,ANALOG,1,64,10.0,10.0,45.0,1232.656,3585.0,20580.0,79.67,
+IPMC_LTC_6A_V,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_6B_I,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_6B_V,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_6C_I,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_6C_V,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_6D_I1,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_6D_I2,ANALOG,1,3311,10.0,10.0,20.0,26.092,55.0,320.0,2.75,
+IPMC_LTC_6D_V1,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_6D_V2,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_6E_I,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_LTC_6E_V,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_PCF_ah,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_PCF_al,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_PCF_bh_I,ANALOG,1,829,10.0,10.0,85.0,103.854,285.0,470.0,3.35,
+IPMC_PCF_bl_V,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_TMP100_bb,ANALOG,1,247,10.0,10.0,20.0,294.211,309.0,14815.0,15.45,
+IPMC_TMP100_bt,ANALOG,1,128,10.0,10.0,25.0,568.672,797.0,12680.0,31.88,
+IPMC_TMP100_fb,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_TMP100_ft,ANALOG,1,150,10.0,10.0,40.0,482.367,585.0,16275.0,14.62,
+IPMC_TMP100_z,ANALOG,1,170,10.0,10.0,35.0,349.647,440.0,20820.0,12.57,
+IPMC_i2cVer,STATIC,1,13,5.0,5.0,5.0,5046.923,23454.0,25670.0,4690.8,
+IPMC_iQ_I,ANALOG,1,313,10.0,10.0,20.0,273.45,866.0,3165.0,43.3,
+IPMC_iQ_T,ANALOG,1,1537,10.0,10.0,15.0,55.55,140.0,1610.0,9.33,
+IPMC_iQ_VA,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_iQ_VB,ANALOG,1,0,,,,,,,,no value changes in window
+IPMC_id,STATIC,1,13,5.0,5.0,5.0,5046.923,23454.0,25670.0,4690.8,
+IPMC_rawtime,COUNTER,1,7869,10.0,10.0,10.0,10.979,15.0,80.0,1.5,
+IPMC_rev,STATIC,1,13,5.0,5.0,5.0,5046.923,23454.0,25670.0,4690.8,
+IPMC_seq,COUNTER,1,7876,5.0,10.0,10.0,10.969,15.0,80.0,1.5,
+IPMC_status,DISCRETE,1,13,5.0,5.0,5.0,5046.923,23454.0,25670.0,4690.8,
+IPMC_ver,STATIC,1,13,5.0,5.0,5.0,5046.923,23454.0,25670.0,4690.8,
+Quality,UNKNOWN,1,,,,,,,,,non-numeric -- no change statistics
+SRTM_SPI00,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_SPI01,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_SPI02,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_SPI03,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_SPI04,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_SPI05,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_SPI06,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_SPI07,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_SPI08,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_SPI09,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_SPI10,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_SPI11,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_SPI12,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_SPI13,UNKNOWN,1,0,,,,,,,,no value changes in window
+SRTM_c00,ANALOG,1,4390,5.0,5.0,10.0,19.534,40.0,720.0,4.0,
+SRTM_c01,ANALOG,1,27,5.0,5.0,5.0,2644.444,3585.0,36330.0,717.0,
+SRTM_c02,ANALOG,1,0,,,,,,,,no value changes in window
+SRTM_c03,ANALOG,1,1031,5.0,5.0,10.0,55.635,50.0,15930.0,5.0,
+SRTM_c04,ANALOG,1,0,,,,,,,,no value changes in window
+SRTM_c05,ANALOG,1,3631,5.0,5.0,5.0,23.748,40.0,5105.0,8.0,
+SRTM_c06,ANALOG,1,3882,5.0,5.0,5.0,22.246,60.0,440.0,12.0,
+SRTM_c07,ANALOG,1,0,,,,,,,,no value changes in window
+SRTM_t00,ANALOG,1,0,,,,,,,,no value changes in window
+SRTM_t01,ANALOG,1,886,5.0,5.0,25.0,97.15,204.5,2865.0,8.18,
+SRTM_t02,ANALOG,1,1542,5.0,5.0,10.0,55.272,105.0,4655.0,10.5,
+SRTM_t03,ANALOG,1,0,,,,,,,,no value changes in window
+SRTM_t04,ANALOG,1,0,,,,,,,,no value changes in window
+SRTM_t05,ANALOG,1,326,5.0,5.0,10.0,233.267,354.5,6325.0,35.45,
+SRTM_t06,ANALOG,1,320,5.0,5.0,10.0,226.328,382.5,6100.0,38.25,
+SRTM_t07,ANALOG,1,0,,,,,,,,no value changes in window
+SRTM_v00,ANALOG,1,1,5.0,5.0,5.0,5.0,5.0,5.0,1.0,
+SRTM_v01,ANALOG,1,0,,,,,,,,no value changes in window
+SRTM_v02,ANALOG,1,0,,,,,,,,no value changes in window
+SRTM_v03,ANALOG,1,0,,,,,,,,no value changes in window
+SRTM_v04,ANALOG,1,0,,,,,,,,no value changes in window
+SRTM_v05,ANALOG,1,0,,,,,,,,no value changes in window
+SRTM_v06,ANALOG,1,0,,,,,,,,no value changes in window
+SRTM_v07,ANALOG,1,1,5.0,5.0,5.0,5.0,5.0,5.0,1.0,
+Swvers,STATIC,1,0,,,,,,,,no value changes in window
+Zynq_pl_temp,ANALOG,1,17178,5.0,5.0,5.0,5.029,5.0,10.0,1.0,
+Zynq_ps_aux3,ANALOG,1,16900,5.0,5.0,5.0,5.112,5.0,20.0,1.0,
+Zynq_ps_bank_500,ANALOG,1,16610,5.0,5.0,5.0,5.201,5.0,15.0,1.0,
+Zynq_ps_bank_503,ANALOG,1,16563,5.0,5.0,5.0,5.216,5.0,20.0,1.0,
+Zynq_ps_temp,ANALOG,1,17178,5.0,5.0,5.0,5.029,5.0,10.0,1.0,
+Zynq_vcc0_psi01_1,ANALOG,1,16593,5.0,5.0,5.0,5.206,5.0,20.0,1.0,
+Zynq_vcc0_psi01_2,ANALOG,1,16662,5.0,5.0,5.0,5.185,5.0,20.0,1.0,
+Zynq_vcc_ddr_io,ANALOG,1,17166,5.0,5.0,5.0,5.033,5.0,10.0,1.0,
+Zynq_vcc_pl_adc,ANALOG,1,17135,5.0,5.0,5.0,5.042,5.0,15.0,1.0,
+Zynq_vcc_pl_aux,ANALOG,1,17107,5.0,5.0,5.0,5.05,5.0,15.0,1.0,
+Zynq_vcc_pl_bram,ANALOG,1,17127,5.0,5.0,5.0,5.044,5.0,10.0,1.0,
+Zynq_vcc_pl_int,ANALOG,1,17121,5.0,5.0,5.0,5.046,5.0,15.0,1.0,
+Zynq_vcc_ps_adc,ANALOG,1,17120,5.0,5.0,5.0,5.046,5.0,15.0,1.0,
+Zynq_vcc_ps_aux,ANALOG,1,17107,5.0,5.0,5.0,5.05,5.0,15.0,1.0,
+Zynq_vcc_ps_gtr,ANALOG,1,17071,5.0,5.0,5.0,5.061,5.0,15.0,1.0,
+Zynq_vcc_ps_intfp5,ANALOG,1,17113,5.0,5.0,5.0,5.048,5.0,10.0,1.0,
+Zynq_vcc_ps_intlp4,ANALOG,1,17102,5.0,5.0,5.0,5.051,5.0,15.0,1.0,
+Zynq_vcc_ps_lpd1,ANALOG,1,16787,5.0,5.0,5.0,5.146,5.0,15.0,1.0,
+Zynq_vcc_ps_lpd2,ANALOG,1,17147,5.0,5.0,5.0,5.038,5.0,15.0,1.0,
+Zynq_vcc_psddrpll,ANALOG,1,17098,5.0,5.0,5.0,5.053,5.0,15.0,1.0,
+Zynq_vcc_psintfp_ddr,ANALOG,1,17106,5.0,5.0,5.0,5.05,5.0,15.0,1.0,
+Zynq_vcc_pspll0,ANALOG,1,17054,5.0,5.0,5.0,5.066,5.0,15.0,1.0,
+Zynq_vccaux,ANALOG,1,17119,5.0,5.0,5.0,5.046,5.0,15.0,1.0,
+Zynq_vccbram,ANALOG,1,17105,5.0,5.0,5.0,5.051,5.0,15.0,1.0,
+Zynq_vccint,ANALOG,1,17106,5.0,5.0,5.0,5.05,5.0,15.0,1.0,
+Zynq_vref_n,ANALOG,1,12282,5.0,5.0,5.0,7.034,10.0,75.0,2.0,
+Zynq_vref_p,ANALOG,1,17038,5.0,5.0,5.0,5.07,5.0,15.0,1.0,
+Zynq_vtt_ps_gtr,ANALOG,1,17101,5.0,5.0,5.0,5.052,5.0,15.0,1.0,

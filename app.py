@@ -26,13 +26,12 @@ THE THREE CLOCKS
 
 import csv
 import os
-import io
 import time
 import statistics
 from collections import defaultdict
 
 import requests
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 # ----------------------------------------------------------------- config
 INFLUX_URL    = os.environ.get("INFLUX_URL", "http://127.0.0.1:8096")
@@ -47,10 +46,21 @@ POLL_INTERVAL = int(os.environ.get("VITALS_POLL_SEC", "5"))
 
 # thresholds (seconds) -- provisional, see three_clock_spec.txt sec 3
 T_POLL_WARN,   T_POLL_ALARM   = 15, 60
+
+# Cadence bins -- seconds of MEDIAN GAP between value changes.
+# These are a taxonomy, not a health scale: green = changes often,
+# red = changes rarely. Edges were cut from the measured distribution
+# (tools/collect_cadence.py), both landing in empty regions:
+#     52 ch @ 5s | 10 @ 10s | 6 @ 15-25s | (void) | 4 @ 35-85s |
+#     (void) | 3 @ 7200s | ~90 with no change in 24h
+CAD_GREEN  = float(os.environ.get("VITALS_CAD_GREEN",  "30"))       # 30s
+CAD_YELLOW = float(os.environ.get("VITALS_CAD_YELLOW", "300"))      # 5m
+CAD_ORANGE = float(os.environ.get("VITALS_CAD_ORANGE", "86400"))    # 24h
 T_CHANGE_WARN, T_CHANGE_ALARM = 30, 120
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CLASS_CSV = os.path.join(HERE, "data", "node_classification.csv")
+CAD_CSV   = os.path.join(HERE, "data", "cadence_stats.csv")
 
 app = Flask(__name__)
 
@@ -69,12 +79,119 @@ def load_classification():
     return table
 
 
+def load_cadence():
+    """field -> measured change-cadence stats from tools/collect_cadence.py.
+
+    Keys: med, mean, p10, p90, min, max, n_gaps, burstiness, window_days.
+    A row with a blank median means the channel never changed during the
+    measurement window -- kept, because "never changed in 24h" is itself
+    the slowest cadence, not missing data.
+    """
+    table = {}
+    if not os.path.exists(CAD_CSV):
+        return table
+
+    def num(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    with open(CAD_CSV, newline="") as f:
+        for row in csv.DictReader(f):
+            table[row["field_name"]] = {
+                "med":    num(row.get("gap_med_s")),
+                "mean":   num(row.get("gap_mean_s")),
+                "p10":    num(row.get("gap_p10_s")),
+                "p90":    num(row.get("gap_p90_s")),
+                "min":    num(row.get("gap_min_s")),
+                "max":    num(row.get("gap_max_s")),
+                "n_gaps": num(row.get("n_gaps")),
+                "burst":  num(row.get("burstiness")),
+                "days":   num(row.get("window_days")),
+                "notes":  row.get("notes", ""),
+            }
+    return table
+
+
 CLASSES = load_classification()
+CADENCE = load_cadence()
+
+
+def cadence_of(field):
+    """Colour bin for one channel, by how often it changes. Taxonomy only:
+    this makes no claim about health. Returns (bin, median_gap_seconds).
+
+        green   <= 30s        fast movers, at or near the 5s polling floor
+        yellow  30s - 5m
+        orange  5m  - 24h     e.g. the 2-hour FireFly uptime counters
+        red     > 24h         rare, including "never changed in the window"
+        grey    not measured  no row in cadence_stats.csv
+    """
+    row = CADENCE.get(field)
+    if row is None:
+        return "grey", None
+    med = row.get("med")
+    if med is None:
+        # Present in the sweep but never changed -> slowest bin, by definition.
+        return "red", None
+    if med <= CAD_GREEN:
+        return "green", med
+    if med <= CAD_YELLOW:
+        return "yellow", med
+    if med <= CAD_ORANGE:
+        return "orange", med
+    return "red", med
+
+
+def gap_stats(pts):
+    """Mean / stdev / median of the interval between consecutive value
+    CHANGES, computed over whatever window the caller fetched.
+
+    Deliberately separate from the mean/sigma of the VALUE. This measures
+    rhythm; that measures magnitude. They answer different questions and
+    conflating them is how 'sigma' ends up meaning two things.
+    """
+    changes, prev = [], None
+    for t, v in pts:
+        if prev is None:
+            prev = v
+            continue
+        if v != prev:
+            changes.append(t)
+            prev = v
+    gaps = [changes[i] - changes[i - 1] for i in range(1, len(changes))]
+    if not gaps:
+        return {"n_changes": len(changes), "n_gaps": 0, "gap_mean": None,
+                "gap_sd": None, "gap_med": None, "gap_min": None,
+                "gap_max": None}
+    return {
+        "n_changes": len(changes),
+        "n_gaps":    len(gaps),
+        "gap_mean":  statistics.fmean(gaps),
+        "gap_sd":    statistics.pstdev(gaps) if len(gaps) > 1 else 0.0,
+        "gap_med":   statistics.median(gaps),
+        "gap_min":   min(gaps),
+        "gap_max":   max(gaps),
+    }
 
 
 # ------------------------------------------------------------------- influx
 def flux(query):
-    """POST a Flux query, return parsed CSV rows. Read-only by construction."""
+    """POST a Flux query, return parsed rows. Read-only by construction.
+
+    InfluxDB returns ANNOTATED CSV, not plain CSV:
+      - '#group' / '#datatype' / '#default' comment lines before each table
+      - a leading empty annotation column on every row
+      - a FRESH header row for every result table
+      - blank lines separating tables
+
+    csv.DictReader on the raw body treats the first line as the schema and
+    every later header row as data, which is how the literal string '_time'
+    ends up being handed to the date parser. Parse defensively instead:
+    reset the header at each table boundary and drop repeated headers.
+    The empty annotation column simply maps to the key '' and is ignored.
+    """
     r = requests.post(
         f"{INFLUX_URL}/api/v2/query",
         params={"org": INFLUX_ORG},
@@ -87,7 +204,35 @@ def flux(query):
         timeout=30,
     )
     r.raise_for_status()
-    return list(csv.DictReader(io.StringIO(r.text)))
+
+    rows, header = [], None
+    for raw in r.text.splitlines():
+        line = raw.rstrip("\r")
+        if not line.strip():
+            header = None          # blank line ends the current table
+            continue
+        if line.lstrip().startswith("#"):
+            continue               # annotation line
+        try:
+            parts = next(csv.reader([line]))
+        except StopIteration:
+            continue
+        if header is None:
+            header = parts         # first non-comment line of a table
+            continue
+        if parts == header:
+            continue               # repeated header
+        rows.append(dict(zip(header, parts)))
+    return rows
+
+
+def safe_epoch(s):
+    """None instead of an exception. A single malformed row must never take
+    down the whole endpoint."""
+    try:
+        return iso_to_epoch(s)
+    except (ValueError, TypeError, AttributeError):
+        return None
 
 
 def fetch_window():
@@ -104,6 +249,8 @@ from(bucket: "{INFLUX_BUCKET}")
         t     = row.get("_time")
         v     = row.get("_value")
         if not field or not t:
+            continue
+        if safe_epoch(t) is None:
             continue
         series[field].append((t, v))
     for f in series:
@@ -154,7 +301,7 @@ def build_vitals():
     for field, points in series.items():
         meta = CLASSES.get(field, {"class": "UNKNOWN", "canary": False,
                                    "notes": "not in classification csv"})
-        times  = [iso_to_epoch(t) for t, _ in points]
+        times  = [safe_epoch(t) for t, _ in points]
         raws   = [v for _, v in points]
         newest = times[-1] if times else None
         if newest and (last_write is None or newest > last_write):
@@ -183,7 +330,10 @@ def build_vitals():
             mean  = statistics.fmean(nums)
             sigma = statistics.pstdev(nums)
 
+        band, med = cadence_of(field)
         channels.append({
+            "heat":      band,
+            "cad_med":   med,
             "field":     field,
             "cls":       meta["class"],
             "canary":    meta["canary"],
@@ -211,17 +361,19 @@ def build_vitals():
     else:
         poll_state = "live"
 
+    heat_counts = {}
+    for c in channels:
+        heat_counts[c["heat"]] = heat_counts.get(c["heat"], 0) + 1
+
+    # FAST canaries only. Measurement showed FF11/12/13_uptime tick every
+    # 7200s -- they cannot say anything about liveness for up to two hours,
+    # so including them produced a "frozen" verdict on a healthy board.
+    # A canary is usable here only if its measured cadence is inside the
+    # green bin.
     canaries = [c for c in channels if c["canary"]]
-    if not canaries:
-        source_state = "unknown"
-    elif any(c["verdict"] == "stale" for c in canaries):
-        source_state = "frozen"
-    elif any(c["verdict"] == "watch" for c in canaries):
-        source_state = "watch"
-    elif all(c["verdict"] == "warming" for c in canaries):
-        source_state = "warming"
-    else:
-        source_state = "live"
+    fast = [c for c in canaries
+            if c["cad_med"] is not None and c["cad_med"] <= CAD_GREEN]
+    slow = [c["field"] for c in canaries if c not in fast]
 
     return {
         "generated":  now,
@@ -231,11 +383,16 @@ def build_vitals():
         "clocks": {
             "t_poll":       t_poll,
             "t_poll_state": poll_state,
-            "source_state": source_state,
+            "fast_canaries": [c["field"] for c in fast],
+            "slow_canaries": slow,
             "t_wincc":      None,
             "t_wincc_state": "not_implemented",
         },
         "counts":   {"total": len(channels)},
+        "heat":     heat_counts,
+        "cad_cuts": {"green": CAD_GREEN, "yellow": CAD_YELLOW,
+                     "orange": CAD_ORANGE},
+        "cadence_fields": len(CADENCE),
         "channels": channels,
     }
 
@@ -259,6 +416,101 @@ def api_vitals():
         return jsonify({"error": f"{type(e).__name__}: {e}"}), 500
 
 
+@app.route("/api/channel/<field>")
+def api_channel(field):
+    """Full series for one channel, for the detail view's time plot.
+
+    Separate from /api/vitals deliberately: the grid needs 161 current
+    values, the detail view needs one channel's history. Pulling both in
+    one query would make every 5s poll drag the whole history across.
+    """
+    if not INFLUX_TOKEN:
+        return jsonify({"error": "INFLUXDB_TOKEN is not set."}), 500
+    try:
+        minutes = max(5, min(int(request.args.get("minutes", WINDOW_MIN)), 10080))
+    except (TypeError, ValueError):
+        minutes = WINDOW_MIN
+
+    safe = field.replace('"', '')
+    q = f'''
+from(bucket: "{INFLUX_BUCKET}")
+  |> range(start: -{minutes}m)
+  |> filter(fn: (r) => r._measurement == "{MEASUREMENT}" and r._field == "{safe}")
+  |> keep(columns: ["_time", "_value"])
+'''
+    try:
+        rows = flux(q)
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"InfluxDB unreachable: {e}"}), 502
+
+    pts = []
+    for r in rows:
+        t, v = r.get("_time"), r.get("_value")
+        e = safe_epoch(t) if t else None
+        if e is None:
+            continue
+        pts.append((e, v))
+    pts.sort(key=lambda p: p[0])
+
+    nums, numeric = [], True
+    for _, v in pts:
+        try:
+            nums.append(float(v))
+        except (TypeError, ValueError):
+            numeric = False
+            break
+
+    meta = CLASSES.get(field, {"class": "UNKNOWN", "canary": False, "notes": ""})
+    out = {
+        "field": field,
+        "cls": meta["class"],
+        "canary": meta["canary"],
+        "notes": meta["notes"],
+        "minutes": minutes,
+        "numeric": numeric,
+        "n": len(pts),
+        "series": [[p[0] * 1000, (nums[i] if numeric else None)]
+                   for i, p in enumerate(pts)],
+        "raw_last": pts[-1][1] if pts else None,
+    }
+    if numeric and len(nums) >= 2:
+        out.update({
+            "mean":  statistics.fmean(nums),
+            "sigma": statistics.pstdev(nums),
+            "min":   min(nums),
+            "max":   max(nums),
+        })
+    else:
+        out.update({"mean": None, "sigma": None, "min": None, "max": None})
+
+    t_change = None
+    if pts:
+        cur = pts[-1][1]
+        for i in range(len(pts) - 2, -1, -1):
+            if pts[i][1] != cur:
+                t_change = time.time() - pts[i + 1][0]
+                break
+    out["t_change"] = round(t_change, 1) if t_change is not None else None
+
+    # rhythm of this channel over the window actually being displayed
+    g = gap_stats(pts)
+    out["gaps"] = {k: (round(v, 3) if isinstance(v, float) else v)
+                   for k, v in g.items()}
+
+    # the 24h reference measurement, for comparison against the above
+    band, med = cadence_of(field)
+    ref = CADENCE.get(field) or {}
+    out["cadence"] = {
+        "bin": band, "median": med,
+        "ref_mean": ref.get("mean"), "ref_p10": ref.get("p10"),
+        "ref_p90": ref.get("p90"), "ref_min": ref.get("min"),
+        "ref_max": ref.get("max"), "ref_n_gaps": ref.get("n_gaps"),
+        "burstiness": ref.get("burst"), "ref_days": ref.get("days"),
+        "ref_notes": ref.get("notes", ""),
+    }
+    return jsonify(out)
+
+
 @app.route("/api/health")
 def api_health():
     return jsonify({
@@ -267,6 +519,7 @@ def api_health():
         "org": INFLUX_ORG,
         "token_present": bool(INFLUX_TOKEN),
         "classified_fields": len(CLASSES),
+        "cadence_fields": len(CADENCE),
     })
 
 
@@ -278,6 +531,8 @@ if __name__ == "__main__":
     print(f"  bucket/org : {INFLUX_BUCKET} / {INFLUX_ORG}")
     print(f"  token      : {'present' if INFLUX_TOKEN else 'MISSING -- source .env'}")
     print(f"  classified : {len(CLASSES)} fields")
+    print(f"  cadence    : {len(CADENCE)} fields"
+          f"{'  <-- run tools/collect_cadence.py' if not CADENCE else ''}")
     print(f"  window     : {WINDOW_MIN} min, min {MIN_SAMPLES} samples")
     print(f"  serving    : http://127.0.0.1:5055")
     print("=" * 62, flush=True)
