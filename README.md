@@ -25,43 +25,176 @@ own. `app.py` holds the token and serves plain JSON.
 
 ---
 
-## Quick start
+## Cold start -- from nothing to the page
 
-Run **on bigmem3**. InfluxDB is bound there.
+Six stages. Each one has a gate: a command whose output tells you it worked.
+Do not move on from a failing gate -- every later symptom will be misleading.
 
-```bash
-git clone https://github.com/N-Herling-Mk1/SRTM-quick-boot-vitals.git
-cd SRTM-quick-boot-vitals
+```
+   natha (Windows)                    eepp-bigmem3 (headless, 10.208.15.7)
+   ---------------                    -----------------------------------
 
-/usr/bin/python3 -m venv .venv          # NOT bare `python3` -- see below
-.venv/bin/pip install -r requirements.txt
-
-cp .env.example .env                     # then fill in INFLUXDB_TOKEN
-./run_vitals.sh
+   (1) Cisco Secure Client
+       vpn.arizona.edu
+            |
+            |  routes 10.208.x
+            v
+   (2) ssh ------------------------->  shell
+                                         |
+                                         | (3) export PATH  (de-SDK)
+                                         | (4) ~/start_code_server.sh
+                                         |          |
+                                         |          v
+                                         |     code-server  127.0.0.1:8080
+                                         |
+                                         | (5) ./run_vitals.sh
+                                         |          |
+                                         |          v
+                                         |     Flask       127.0.0.1:5055
+                                         |                      |
+                                         |                      | reads
+                                         |                      v
+                                         |     InfluxDB    127.0.0.1:8096
+                                         |                      ^
+                                         |                      | writes
+                                         |                 Telegraf --- OPC UA --> SRTM board
+                                         |
+   (6) ssh -L 8080 -L 5055 ---------------+
+            |
+            v
+       browser
+       localhost:8080  editor
+       localhost:5055  vitals
 ```
 
-Tunnel from Windows and open `http://localhost:5055`:
+Both services bind `127.0.0.1` deliberately. Neither is reachable on the
+host's external interface; the SSH forward is the only way in.
+
+### (1) VPN
+
+`eepp-bigmem3.physics.arizona.edu` resolves to a private `10.208.15.7` and is
+unreachable off-VPN. DNS still answers, so a failure here looks like a dead
+host rather than a routing problem.
+
+Cisco Secure Client, server `vpn.arizona.edu` -- **bare, no group suffix**.
+NetID, password, then `push` at the 2FA prompt.
 
 ```powershell
-ssh -L 5055:localhost:5055 naherlin@eepp-bigmem3.physics.arizona.edu
+Test-NetConnection eepp-bigmem3.physics.arizona.edu -Port 22 | Select TcpTestSucceeded
 ```
 
-### The bigmem3 python trap
+**Gate:** `True`.
+
+### (2) SSH in
+
+```powershell
+ssh naherlin@eepp-bigmem3.physics.arizona.edu
+```
+
+**Gate:** a prompt, after the PetaLinux banner noise.
+
+### (3) De-SDK the shell
 
 The login shell sources the PetaLinux/Vitis SDK, which puts an SDK python3.10
 ahead of the system python and can drop coreutils off `PATH` entirely.
-Packages `pip3` installs there are invisible to the interpreter that runs, so
-`pip3 install` succeeds and `import requests` still fails.
-
-Always build the venv from `/usr/bin/python3` explicitly. If `cat` or `cp` go
-missing in a shell:
+Packages `pip3` installs there are invisible to the interpreter that actually
+runs, so `pip3 install` succeeds and `import requests` still fails.
 
 ```bash
 export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:$PATH
 ```
 
-`run_vitals.sh` refuses to start under an SDK interpreter rather than failing
+Run this in **every** new session. Then confirm the data source is alive:
+
+```bash
+docker ps --format '{{.Names}}\t{{.Status}}' | grep srtm-tig
+```
+
+**Gate:** `srtm-tig-telegraf-1` and `srtm-tig-influxdb-1` both `Up`. Grafana is
+not required -- see *Known upstream defects*.
+
+### (4) code-server
+
+Needed for drag/drop editing on the box. **Installed by tarball and not on
+`PATH`** -- a bare `code-server` fails with *No such file or directory*, and
+`nohup` reports that only in the log file, so the launch looks silent.
+
+```bash
+~/start_code_server.sh
+```
+
+The binary is at `~/code-server/bin/code-server`. The script exports `PATH`,
+refuses to double-start if 8080 is already listening, logs to
+`~/logs/code-server.out`, and verifies the listener before returning.
+
+**Gate:** `OK  http://localhost:8080 via tunnel`.
+
+There is **no service unit** -- code-server does not survive a host reboot.
+After one, re-run the script.
+
+The browser will ask for a password at `localhost:8080`. It is generated at
+install time, not chosen, so read it off the box:
+
+```bash
+grep -E '^(password|hashed-password|auth):' ~/.config/code-server/config.yaml
+```
+
+`auth: password` with a `password:` line -- that value is what you paste.
+`auth: none` means no prompt. A `hashed-password:` instead cannot be read
+back; set a new one by editing `password:` in that file and restarting
+code-server.
+
+### (5) The instrument
+
+First time on a given clone:
+
+```bash
+git clone https://github.com/N-Herling-Mk1/SRTM-quick-boot-vitals.git
+cd SRTM-quick-boot-vitals
+
+/usr/bin/python3 -m venv .venv          # NOT bare `python3` -- see (3)
+.venv/bin/pip install -r requirements.txt
+
+mkdir -p logs                            # gitignored; absent on a fresh clone
+cp .env.example .env                     # then fill in INFLUXDB_TOKEN
+```
+
+Every time:
+
+```bash
+./run_vitals.sh
+```
+
+Four gates print in order: interpreter, environment, InfluxDB reachable,
+serving. It refuses to start under an SDK interpreter rather than failing
 later at `import`.
+
+**Gate:** the banner reads `cadence : 175 fields`. A different count means
+telegraf's live field set has drifted from `data/cadence_stats.csv` and the
+map will show grey cells.
+
+### (6) Tunnel and open
+
+New PowerShell window -- closing it drops both forwards. One hop carries both
+ports:
+
+```powershell
+ssh -L 8080:localhost:8080 -L 5055:localhost:5055 naherlin@eepp-bigmem3.physics.arizona.edu
+```
+
+| URL | what |
+|---|---|
+| `http://localhost:8080` | code-server -- editing, drag/drop |
+| `http://localhost:5055` | the vitals page |
+
+**Gate:** the cadence map is coloured rather than all grey, `t_poll` ticks, and
+`IPMC_seq` / `IPMC_rawtime` / `IPMC_time` advance in the canary strip.
+
+### After a reboot
+
+Nothing here is a service. `~/start_code_server.sh` and `./run_vitals.sh` both
+have to be re-run by hand. Telegraf and InfluxDB come back on their own;
+Grafana does not.
 
 ### Getting files onto bigmem3
 
@@ -194,6 +327,7 @@ static/vitals.js              polling, search, map, detail plot
 data/node_classification.csv  161 fields: COUNTER/ANALOG/DISCRETE/STATIC
 data/cadence_stats.csv        measured change cadence, 175 fields
 tools/collect_cadence.py      regenerates the above
+logs/                         gitignored, absent on a fresh clone -- mkdir -p it
 docs/topology.svg             how the pieces connect
 ```
 
@@ -207,6 +341,13 @@ docs/topology.svg             how the pieces connect
   live InfluxDB data, not just the config. Any grouping across the three
   FireFlys silently drops two of three.
 * README says browse `localhost:8086`; the host mapping is `8096`.
+* **`grafana` has `restart: no`** while `telegraf` and `influxdb` have
+  `unless-stopped`. bigmem3 rebooted 2026-08-04 ~02:00 UTC; docker reconciled
+  at 02:30 and brought back two of three. Grafana's `rc=255` and its stale
+  `StartedAt` are artifacts of the daemon dying underneath it, not a fault.
+  One line in `compose.yaml` fixes it. The outage also leaves a multi-hour
+  hole in InfluxDB across Aug 3-4 -- a window selected across it shows a flat
+  line that is not a frozen channel.
 
 ## Open
 
