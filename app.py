@@ -47,17 +47,20 @@ POLL_INTERVAL = int(os.environ.get("VITALS_POLL_SEC", "5"))
 # thresholds (seconds) -- provisional, see three_clock_spec.txt sec 3
 T_POLL_WARN,   T_POLL_ALARM   = 15, 60
 
-# Heat map: ratio = t_change / this channel's own baseline interval.
-# Dimensionless on purpose -- a 5s rail and a 15min counter are both
-# "green" when behaving normally, with no per-channel constants.
-HEAT_YELLOW = float(os.environ.get("VITALS_HEAT_YELLOW", "2"))
-HEAT_ORANGE = float(os.environ.get("VITALS_HEAT_ORANGE", "5"))
-HEAT_RED    = float(os.environ.get("VITALS_HEAT_RED",    "20"))
+# Cadence bins -- seconds of MEDIAN GAP between value changes.
+# These are a taxonomy, not a health scale: green = changes often,
+# red = changes rarely. Edges were cut from the measured distribution
+# (tools/collect_cadence.py), both landing in empty regions:
+#     52 ch @ 5s | 10 @ 10s | 6 @ 15-25s | (void) | 4 @ 35-85s |
+#     (void) | 3 @ 7200s | ~90 with no change in 24h
+CAD_GREEN  = float(os.environ.get("VITALS_CAD_GREEN",  "30"))       # 30s
+CAD_YELLOW = float(os.environ.get("VITALS_CAD_YELLOW", "300"))      # 5m
+CAD_ORANGE = float(os.environ.get("VITALS_CAD_ORANGE", "86400"))    # 24h
 T_CHANGE_WARN, T_CHANGE_ALARM = 30, 120
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CLASS_CSV = os.path.join(HERE, "data", "node_classification.csv")
-BASE_CSV  = os.path.join(HERE, "data", "change_baseline.csv")
+CAD_CSV   = os.path.join(HERE, "data", "cadence_stats.csv")
 
 app = Flask(__name__)
 
@@ -76,56 +79,101 @@ def load_classification():
     return table
 
 
-def load_baseline():
-    """field -> baseline change interval in seconds, from tools/build_baseline.py.
+def load_cadence():
+    """field -> measured change-cadence stats from tools/collect_cadence.py.
 
-    Absent file is not an error: the heat map simply reports 'nobase' for
-    every channel and the rest of the page is unaffected.
+    Keys: med, mean, p10, p90, min, max, n_gaps, burstiness, window_days.
+    A row with a blank median means the channel never changed during the
+    measurement window -- kept, because "never changed in 24h" is itself
+    the slowest cadence, not missing data.
     """
     table = {}
-    if not os.path.exists(BASE_CSV):
+    if not os.path.exists(CAD_CSV):
         return table
-    with open(BASE_CSV, newline="") as f:
+
+    def num(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    with open(CAD_CSV, newline="") as f:
         for row in csv.DictReader(f):
-            raw = (row.get("baseline_interval_sec") or "").strip()
-            if not raw:
-                continue
-            try:
-                iv = float(raw)
-            except ValueError:
-                continue
-            if iv > 0:
-                table[row["field_name"]] = iv
+            table[row["field_name"]] = {
+                "med":    num(row.get("gap_med_s")),
+                "mean":   num(row.get("gap_mean_s")),
+                "p10":    num(row.get("gap_p10_s")),
+                "p90":    num(row.get("gap_p90_s")),
+                "min":    num(row.get("gap_min_s")),
+                "max":    num(row.get("gap_max_s")),
+                "n_gaps": num(row.get("n_gaps")),
+                "burst":  num(row.get("burstiness")),
+                "days":   num(row.get("window_days")),
+                "notes":  row.get("notes", ""),
+            }
     return table
 
 
-CLASSES  = load_classification()
-BASELINE = load_baseline()
+CLASSES = load_classification()
+CADENCE = load_cadence()
 
 
-def heat_of(field, cls, t_change, window_sec):
-    """Colour band for one channel, relative to its own cadence.
+def cadence_of(field):
+    """Colour bin for one channel, by how often it changes. Taxonomy only:
+    this makes no claim about health. Returns (bin, median_gap_seconds).
 
-    Returns (band, ratio). Bands: green | yellow | orange | red |
-    static (never expected to change) | nobase (no baseline available).
+        green   <= 30s        fast movers, at or near the 5s polling floor
+        yellow  30s - 5m
+        orange  5m  - 24h     e.g. the 2-hour FireFly uptime counters
+        red     > 24h         rare, including "never changed in the window"
+        grey    not measured  no row in cadence_stats.csv
     """
-    if cls in ("STATIC",):
-        return "static", None
-    iv = BASELINE.get(field)
-    if not iv:
-        return "nobase", None
-    # No transition seen in the window -> it has been at least this long.
-    effective = t_change if t_change is not None else window_sec
-    ratio = effective / iv
-    if ratio <= HEAT_YELLOW:
-        band = "green"
-    elif ratio <= HEAT_ORANGE:
-        band = "yellow"
-    elif ratio <= HEAT_RED:
-        band = "orange"
-    else:
-        band = "red"
-    return band, round(ratio, 2)
+    row = CADENCE.get(field)
+    if row is None:
+        return "grey", None
+    med = row.get("med")
+    if med is None:
+        # Present in the sweep but never changed -> slowest bin, by definition.
+        return "red", None
+    if med <= CAD_GREEN:
+        return "green", med
+    if med <= CAD_YELLOW:
+        return "yellow", med
+    if med <= CAD_ORANGE:
+        return "orange", med
+    return "red", med
+
+
+def gap_stats(pts):
+    """Mean / stdev / median of the interval between consecutive value
+    CHANGES, computed over whatever window the caller fetched.
+
+    Deliberately separate from the mean/sigma of the VALUE. This measures
+    rhythm; that measures magnitude. They answer different questions and
+    conflating them is how 'sigma' ends up meaning two things.
+    """
+    changes, prev = [], None
+    for t, v in pts:
+        if prev is None:
+            prev = v
+            continue
+        if v != prev:
+            changes.append(t)
+            prev = v
+    gaps = [changes[i] - changes[i - 1] for i in range(1, len(changes))]
+    if not gaps:
+        return {"n_changes": len(changes), "n_gaps": 0, "gap_mean": None,
+                "gap_sd": None, "gap_med": None, "gap_min": None,
+                "gap_max": None}
+    return {
+        "n_changes": len(changes),
+        "n_gaps":    len(gaps),
+        "gap_mean":  statistics.fmean(gaps),
+        "gap_sd":    statistics.pstdev(gaps) if len(gaps) > 1 else 0.0,
+        "gap_med":   statistics.median(gaps),
+        "gap_min":   min(gaps),
+        "gap_max":   max(gaps),
+    }
 
 
 # ------------------------------------------------------------------- influx
@@ -282,12 +330,10 @@ def build_vitals():
             mean  = statistics.fmean(nums)
             sigma = statistics.pstdev(nums)
 
-        band, ratio = heat_of(field, meta["class"], t_change,
-                              WINDOW_MIN * 60.0)
+        band, med = cadence_of(field)
         channels.append({
             "heat":      band,
-            "ratio":     ratio,
-            "baseline":  BASELINE.get(field),
+            "cad_med":   med,
             "field":     field,
             "cls":       meta["class"],
             "canary":    meta["canary"],
@@ -319,17 +365,15 @@ def build_vitals():
     for c in channels:
         heat_counts[c["heat"]] = heat_counts.get(c["heat"], 0) + 1
 
+    # FAST canaries only. Measurement showed FF11/12/13_uptime tick every
+    # 7200s -- they cannot say anything about liveness for up to two hours,
+    # so including them produced a "frozen" verdict on a healthy board.
+    # A canary is usable here only if its measured cadence is inside the
+    # green bin.
     canaries = [c for c in channels if c["canary"]]
-    if not canaries:
-        source_state = "unknown"
-    elif any(c["verdict"] == "stale" for c in canaries):
-        source_state = "frozen"
-    elif any(c["verdict"] == "watch" for c in canaries):
-        source_state = "watch"
-    elif all(c["verdict"] == "warming" for c in canaries):
-        source_state = "warming"
-    else:
-        source_state = "live"
+    fast = [c for c in canaries
+            if c["cad_med"] is not None and c["cad_med"] <= CAD_GREEN]
+    slow = [c["field"] for c in canaries if c not in fast]
 
     return {
         "generated":  now,
@@ -339,15 +383,16 @@ def build_vitals():
         "clocks": {
             "t_poll":       t_poll,
             "t_poll_state": poll_state,
-            "source_state": source_state,
+            "fast_canaries": [c["field"] for c in fast],
+            "slow_canaries": slow,
             "t_wincc":      None,
             "t_wincc_state": "not_implemented",
         },
         "counts":   {"total": len(channels)},
         "heat":     heat_counts,
-        "heat_cuts": {"yellow": HEAT_YELLOW, "orange": HEAT_ORANGE,
-                      "red": HEAT_RED},
-        "baseline_fields": len(BASELINE),
+        "cad_cuts": {"green": CAD_GREEN, "yellow": CAD_YELLOW,
+                     "orange": CAD_ORANGE},
+        "cadence_fields": len(CADENCE),
         "channels": channels,
     }
 
@@ -446,6 +491,23 @@ from(bucket: "{INFLUX_BUCKET}")
                 t_change = time.time() - pts[i + 1][0]
                 break
     out["t_change"] = round(t_change, 1) if t_change is not None else None
+
+    # rhythm of this channel over the window actually being displayed
+    g = gap_stats(pts)
+    out["gaps"] = {k: (round(v, 3) if isinstance(v, float) else v)
+                   for k, v in g.items()}
+
+    # the 24h reference measurement, for comparison against the above
+    band, med = cadence_of(field)
+    ref = CADENCE.get(field) or {}
+    out["cadence"] = {
+        "bin": band, "median": med,
+        "ref_mean": ref.get("mean"), "ref_p10": ref.get("p10"),
+        "ref_p90": ref.get("p90"), "ref_min": ref.get("min"),
+        "ref_max": ref.get("max"), "ref_n_gaps": ref.get("n_gaps"),
+        "burstiness": ref.get("burst"), "ref_days": ref.get("days"),
+        "ref_notes": ref.get("notes", ""),
+    }
     return jsonify(out)
 
 
@@ -457,7 +519,7 @@ def api_health():
         "org": INFLUX_ORG,
         "token_present": bool(INFLUX_TOKEN),
         "classified_fields": len(CLASSES),
-        "baseline_fields": len(BASELINE),
+        "cadence_fields": len(CADENCE),
     })
 
 
@@ -469,8 +531,8 @@ if __name__ == "__main__":
     print(f"  bucket/org : {INFLUX_BUCKET} / {INFLUX_ORG}")
     print(f"  token      : {'present' if INFLUX_TOKEN else 'MISSING -- source .env'}")
     print(f"  classified : {len(CLASSES)} fields")
-    print(f"  baselines  : {len(BASELINE)} fields"
-          f"{'  <-- run tools/build_baseline.py' if not BASELINE else ''}")
+    print(f"  cadence    : {len(CADENCE)} fields"
+          f"{'  <-- run tools/collect_cadence.py' if not CADENCE else ''}")
     print(f"  window     : {WINDOW_MIN} min, min {MIN_SAMPLES} samples")
     print(f"  serving    : http://127.0.0.1:5055")
     print("=" * 62, flush=True)

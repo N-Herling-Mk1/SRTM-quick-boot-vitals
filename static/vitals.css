@@ -51,7 +51,6 @@ body{
   height:200px; animation:sweep 11s linear infinite;
 }
 @keyframes sweep{ from{transform:translateY(-220px)} to{transform:translateY(100vh)} }
-@keyframes blink{ 50%{opacity:.2} }
 
 /* ---------------------------------------------------------------- header */
 .hdr{
@@ -77,13 +76,13 @@ body{
 .hdr-lamp[data-state="live"]   .lamp-dot{ background:var(--cyan-ink) }
 .hdr-lamp[data-state="live"]   .lamp-txt{ color:var(--cyan-ink) }
 .hdr-lamp[data-state="watch"]  { box-shadow:0 0 22px rgba(255,176,32,.42) }
-.hdr-lamp[data-state="watch"]  .lamp-dot{ background:var(--amber-ink); animation:blink 1.1s steps(2) infinite }
+.hdr-lamp[data-state="watch"]  .lamp-dot{ background:var(--amber-ink)}
 .hdr-lamp[data-state="watch"]  .lamp-txt{ color:var(--amber-ink) }
 .hdr-lamp[data-state="frozen"] { box-shadow:0 0 22px rgba(255,107,26,.5) }
-.hdr-lamp[data-state="frozen"] .lamp-dot{ background:var(--orange); animation:blink .6s steps(2) infinite }
+.hdr-lamp[data-state="frozen"] .lamp-dot{ background:var(--orange)}
 .hdr-lamp[data-state="frozen"] .lamp-txt{ color:#8a3405 }
 .hdr-lamp[data-state="dead"]   { box-shadow:0 0 22px rgba(255,45,70,.5) }
-.hdr-lamp[data-state="dead"]   .lamp-dot{ background:var(--red-ink); animation:blink .55s steps(2) infinite }
+.hdr-lamp[data-state="dead"]   .lamp-dot{ background:var(--red-ink)}
 .hdr-lamp[data-state="dead"]   .lamp-txt{ color:var(--red-ink) }
 
 /* ---------------------------------------------------------------- clocks */
@@ -124,7 +123,7 @@ body{
 .can[data-v="watch"]   { border-top-color:var(--amber-ink) }
 .can[data-v="watch"]    .can-v{ color:var(--amber-ink) }
 .can[data-v="stale"]   { border-top-color:var(--red-ink) }
-.can[data-v="stale"]    .can-v{ color:var(--red-ink); animation:blink .8s steps(2) infinite }
+.can[data-v="stale"]    .can-v{ color:var(--red-ink)}
 .can[data-v="warming"]  .can-v{ color:var(--ink-3) }
 
 /* ---------------------------------------------------------- progress bar */
@@ -257,7 +256,7 @@ body{
 .hc[data-h="green"]  { background:#12b866 }
 .hc[data-h="yellow"] { background:#e8c018 }
 .hc[data-h="orange"] { background:#ff7a1a }
-.hc[data-h="red"]    { background:#e6152f; animation:blink 1.3s steps(2) infinite }
+.hc[data-h="red"]    { background:#e6152f}
 .hc[data-h="static"] { background:#9db9c5; opacity:.45 }
 .hc[data-h="nobase"] { background:#7d8f99; opacity:.3 }
 
@@ -294,3 +293,46 @@ body{
   .heat-grid{ grid-template-columns:repeat(auto-fill,minmax(12px,1fr)) }
   .heat-legend{ margin-left:0 }
 }
+
+/* ==========================================================================
+   rev 4 -- cadence taxonomy: card outlines, map selection, rhythm block
+   ========================================================================== */
+
+.hc[data-h="grey"]{ background:#7d8f99; opacity:.3 }
+.hc.sel{ outline:2px solid var(--cyan); outline-offset:1px; transform:scale(1.4);
+  position:relative; z-index:4 }
+.lg i.n{ background:#7d8f99; opacity:.35 }
+
+/* channel cards carry their cadence colour as an outline; the left border
+   still carries live verdict, so the two encodings never collide */
+.ch[data-h="green"] { outline:1.5px solid rgba(18,184,102,.75); outline-offset:-1px }
+.ch[data-h="yellow"]{ outline:1.5px solid rgba(232,192,24,.8);  outline-offset:-1px }
+.ch[data-h="orange"]{ outline:1.5px solid rgba(255,122,26,.8);  outline-offset:-1px }
+.ch[data-h="red"]   { outline:1.5px solid rgba(230,21,47,.65);  outline-offset:-1px }
+.ch[data-h="grey"]  { outline:1.5px solid rgba(125,143,153,.4); outline-offset:-1px }
+
+/* detail: section captions + reference cadence strip */
+.dt-sec{ font-family:var(--disp); font-size:9px; letter-spacing:.2em;
+  color:var(--ink-3); text-transform:uppercase; margin:2px 0 7px }
+.dt-sec + .dt-stats{ margin-bottom:12px }
+.dt-ref{ background:var(--panel-3); padding:8px 11px; border-radius:2px;
+  font-size:11px; color:var(--ink-2); margin-bottom:13px; line-height:1.7 }
+.dt-ref b{ font-weight:normal; color:var(--ink) }
+.pill{ display:inline-block; padding:1px 8px; border-radius:9px; font-size:10px;
+  color:#06131b }
+.pill[data-h="green"] { background:#12b866 }
+.pill[data-h="yellow"]{ background:#e8c018 }
+.pill[data-h="orange"]{ background:#ff7a1a }
+.pill[data-h="red"]   { background:#e6152f; color:#fff }
+.pill[data-h="grey"]  { background:#9db9c5 }
+
+.gl h4{ margin-top:18px }
+.gl em{ font-style:normal; color:var(--ink) }
+
+/* ==========================================================================
+   rev 5 -- cadence colours are a taxonomy, not an alarm
+   Nothing blinks. Nothing pulses. A red cell means "changes rarely", which
+   is a property of the channel, not an event demanding attention.
+   ========================================================================== */
+.hc, .hc[data-h="red"], .can, .can[data-v="stale"] .can-v,
+.lamp-dot, .hdr-lamp .lamp-dot{ animation:none !important }

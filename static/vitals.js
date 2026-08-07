@@ -27,6 +27,8 @@ const el = {
   dtName: document.getElementById("dtName"),
   dtSub: document.getElementById("dtSub"),
   dtStats: document.getElementById("dtStats"),
+  dtGaps: document.getElementById("dtGaps"),
+  dtRef: document.getElementById("dtRef"),
   dtRng: document.getElementById("dtRng"),
   dtNote: document.getElementById("dtNote"),
   dtX: document.getElementById("dtX"),
@@ -40,13 +42,21 @@ const el = {
 };
 
 const HEAT_LABEL = {
-  green:  "on schedule",
-  yellow: "lagging",
-  orange: "well overdue",
-  red:    "effectively stopped",
-  static: "identity string \u2014 never changes",
-  nobase: "no baseline \u2014 run tools/build_baseline.py",
+  green:  "changes often",
+  yellow: "changes every 30s\u20135m",
+  orange: "changes every 5m\u201324h",
+  red:    "changes rarely (>24h)",
+  grey:   "not measured \u2014 run tools/collect_cadence.py",
 };
+
+/* seconds -> compact human string */
+function dur(v) {
+  if (v === null || v === undefined) return "\u2014";
+  if (v < 90) return `${(+v).toFixed(v < 10 ? 1 : 0)}s`;
+  if (v < 5400) return `${(v / 60).toFixed(1)}m`;
+  if (v < 172800) return `${(v / 3600).toFixed(1)}h`;
+  return `${(v / 86400).toFixed(1)}d`;
+}
 
 let filter = "ALL";
 let query = "";
@@ -54,6 +64,7 @@ let latest = null;
 let tick = 0;
 let inflight = false;
 let openField = null;
+let selected = null;
 let openMinutes = 30;
 
 const FLAGGED = new Set(["stale", "watch", "flat"]);
@@ -82,13 +93,14 @@ function shortVal(v, max = 16) {
 const esc = (s) => String(s).replace(/[&<>"]/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+/* The lamp says one thing only: is the collector still writing? That is a
+   fact about the pipeline, not a judgement about the board. Anything about
+   the board's own liveness lives in the clocks below, where it can be read
+   against each channel's measured cadence. */
 const LAMP = {
-  live: ["live", "PIPELINE LIVE"],
-  watch: ["watch", "WATCH"],
-  frozen: ["frozen", "SOURCE FROZEN"],
-  dead: ["dead", "PIPELINE DEAD"],
-  warming: ["watch", "WARMING UP"],
-  unknown: ["watch", "NO CANARIES"],
+  live:  ["live",  "PIPELINE LIVE"],
+  watch: ["watch", "PIPELINE SLOW"],
+  dead:  ["dead",  "PIPELINE DEAD"],
 };
 
 /* ---------------------------------------------------------------- render */
@@ -109,20 +121,26 @@ function render(d) {
   el.vPoll.textContent = secs(c.t_poll);
   el.clkPoll.dataset.state = c.t_poll_state;
 
+  // t_change clock: only canaries fast enough to mean something. The
+  // 2-hour uptime counters are shown in the strip but never drive a verdict.
   const cans = d.channels.filter((x) => x.canary);
-  const rank = { stale: 3, watch: 2, warming: 1, live: 0 };
-  const worst = cans.reduce(
-    (acc, x) => ((rank[x.verdict] ?? 0) > (rank[acc] ?? 0) ? x.verdict : acc), "live");
-  const oldest = cans.reduce(
+  const fastNames = new Set(c.fast_canaries || []);
+  const fastCans = cans.filter((x) => fastNames.has(x.field));
+  const pool = fastCans.length ? fastCans : [];
+  const oldest = pool.reduce(
     (m, x) => (x.t_change !== null && (m === null || x.t_change > m) ? x.t_change : m), null);
+  const refMed = pool.reduce(
+    (m, x) => (x.cad_med && (m === null || x.cad_med > m) ? x.cad_med : m), null);
 
   el.vSrc.textContent = oldest === null ? "\u2014" : secs(oldest);
+  // Judged against the canaries' own measured cadence, not a fixed number.
   el.clkSrc.dataset.state =
-    worst === "stale" ? "frozen" : worst === "watch" ? "watch"
-      : worst === "warming" ? "warming" : "live";
+    oldest === null || refMed === null ? "na"
+      : oldest > refMed * 12 ? "dead"
+      : oldest > refMed * 4 ? "watch"
+      : "live";
 
-  const overall = c.t_poll_state === "dead" ? "dead" : c.source_state;
-  const [ls, lt] = LAMP[overall] || LAMP.unknown;
+  const [ls, lt] = LAMP[c.t_poll_state] || LAMP.watch;
   el.lamp.dataset.state = ls;
   el.lampTxt.textContent = lt;
 
@@ -137,24 +155,22 @@ function render(d) {
 
   // ---- cadence map -------------------------------------------------------
   const hc = d.heat || {};
-  const cuts = d.heat_cuts || { yellow: 2, orange: 5, red: 20 };
+  const cuts = d.cad_cuts || { green: 30, yellow: 300, orange: 86400 };
   el.heatLegend.innerHTML = [
-    ["g", "green", `\u2264${cuts.yellow}\u00d7`],
-    ["y", "yellow", `\u2264${cuts.orange}\u00d7`],
-    ["o", "orange", `\u2264${cuts.red}\u00d7`],
-    ["r", "red", `>${cuts.red}\u00d7`],
-    ["s", "static", ""],
-    ["n", "nobase", ""],
+    ["g", "green", `\u2264${dur(cuts.green)}`],
+    ["y", "yellow", `\u2264${dur(cuts.yellow)}`],
+    ["o", "orange", `\u2264${dur(cuts.orange)}`],
+    ["r", "red", `>${dur(cuts.orange)}`],
+    ["n", "grey", "unmeasured"],
   ].filter(([, k]) => (hc[k] || 0) > 0)
    .map(([cls, k, rng]) =>
       `<span class="lg"><i class="${cls}"></i>${hc[k]} ${k}${rng ? " " + rng : ""}</span>`)
    .join("");
 
   el.heatGrid.innerHTML = d.channels.map((x) => {
-    const r = x.ratio === null || x.ratio === undefined ? "" : ` ${x.ratio}\u00d7`;
-    return `<div class="hc" tabindex="0" data-h="${x.heat}" data-field="${esc(x.field)}"
-      data-tip="${esc(x.field)}|${x.cls}|${x.heat}|${r}|${secs(x.t_change)}|${
-        x.baseline ? x.baseline.toFixed(1) + "s" : "\u2014"}"></div>`;
+    const sel = selected === x.field ? " sel" : "";
+    return `<div class="hc${sel}" tabindex="0" data-h="${x.heat}" data-field="${esc(x.field)}"
+      data-tip="${esc(x.field)}|${x.cls}|${x.heat}|${dur(x.cad_med)}|${secs(x.t_change)}"></div>`;
   }).join("");
 
   const rows = visible(d);
@@ -167,8 +183,9 @@ function render(d) {
           ? `warming ${x.n}/${d.min_samples}`
           : `t&Delta; ${secs(x.t_change)}`;
         return `
-          <div class="ch" data-v="${x.verdict}" data-field="${esc(x.field)}"
-               title="${esc(x.field)} \u2014 ${x.cls} \u2014 click for detail">
+          <div class="ch" data-v="${x.verdict}" data-h="${x.heat}"
+               data-field="${esc(x.field)}"
+               title="${esc(x.field)} \u2014 ${x.cls} \u2014 cadence ${dur(x.cad_med)} \u2014 click for detail">
             <div class="ch-top">
               <span class="ch-f">${esc(x.field)}</span>
               <span class="ch-c">${x.cls}</span>
@@ -183,7 +200,7 @@ function render(d) {
   el.ftrMeta.textContent =
     `${rows.length}/${d.channels.length} shown \u00b7 ${flaggedN} flagged \u00b7 ` +
     `window ${d.window_min}m \u00b7 ${new Date().toLocaleTimeString()}` +
-    (d.baseline_fields ? "" : "  \u2014 NO BASELINES: run tools/build_baseline.py");
+    (d.cadence_fields ? "" : "  \u2014 NO CADENCE DATA: run tools/collect_cadence.py");
 }
 
 /* ----------------------------------------------------------------- fetch */
@@ -250,12 +267,36 @@ async function openDetail(field, minutes) {
       statCell("T_CHANGE", secs(d.t_change)),
     ].join("");
 
+    const g = d.gaps || {};
+    el.dtGaps.innerHTML = g.n_gaps
+      ? [statCell("CHANGES", g.n_changes),
+         statCell("MEAN GAP", dur(g.gap_mean)),
+         statCell("SIGMA GAP", dur(g.gap_sd)),
+         statCell("MEDIAN GAP", dur(g.gap_med)),
+         statCell("MIN GAP", dur(g.gap_min)),
+         statCell("MAX GAP", dur(g.gap_max))].join("")
+      : `<div class="empty">${g.n_changes || 0} change(s) in this window \u2014 `
+        + `at least two are needed to measure an interval. Try a longer window.</div>`;
+
+    const c = d.cadence || {};
+    el.dtRef.innerHTML = c.median || c.ref_n_gaps
+      ? `<b>${c.ref_days || 1}h reference</b>`.replace("h ", "d ")
+        + ` \u00b7 bin <span class="pill" data-h="${c.bin}">${c.bin}</span>`
+        + ` \u00b7 median ${dur(c.median)} \u00b7 mean ${dur(c.ref_mean)}`
+        + ` \u00b7 p10 ${dur(c.ref_p10)} \u00b7 p90 ${dur(c.ref_p90)}`
+        + ` \u00b7 burstiness ${c.burstiness ?? "\u2014"}\u00d7`
+        + ` \u00b7 n=${c.ref_n_gaps ?? 0}`
+      : `<b>reference</b> \u00b7 bin <span class="pill" data-h="${c.bin}">${c.bin}</span>`
+        + ` \u00b7 ${esc(c.ref_notes || "not measured \u2014 run tools/collect_cadence.py")}`;
+
     drawPlot(d);
     el.dtNote.textContent = d.numeric
       ? (d.notes || "")
       : "Non-numeric channel \u2014 no plot or statistics. " + (d.notes || "");
   } catch (e) {
     el.dtSub.textContent = `failed \u2014 ${e.message}`;
+    el.dtGaps.innerHTML = "";
+    el.dtRef.innerHTML = "";
     clearPlot();
   }
 }
@@ -334,9 +375,26 @@ function drawPlot(d) {
   g.fillText(new Date(x1).toLocaleTimeString(), w - PAD.r, h - PAD.b + 7);
 }
 
+function selectField(field) {
+  selected = field;
+  el.search.value = field;
+  query = field.toLowerCase();
+  if (latest) render(latest);
+  openDetail(field, openMinutes);
+}
+
 function closeDetail() {
   el.ov.hidden = true;
   openField = null;
+  if (selected) {          // isolating came from the map -> restore the grid
+    selected = null;
+    el.search.value = "";
+    query = "";
+    filter = "ALL";
+    [...el.filters.querySelectorAll("button")].forEach(
+      (b) => b.classList.toggle("on", b.dataset.f === "ALL"));
+    if (latest) render(latest);
+  }
 }
 
 /* --------------------------------------------------------------- events */
@@ -348,13 +406,18 @@ function wireClick(node) {
 }
 wireClick(el.grid);
 wireClick(el.canary);
-wireClick(el.heatGrid);
+
+el.heatGrid.addEventListener("click", (e) => {
+  const c = e.target.closest("[data-field]");
+  if (c) selectField(c.dataset.field);
+});
 
 function showTip(cell, x, y) {
-  const [f, cls, heat, ratio, tchg, base] = (cell.dataset.tip || "").split("|");
+  const [f, cls, heat, med, tchg] = (cell.dataset.tip || "").split("|");
   el.heatTip.innerHTML =
-    `<b>${f}</b><br>${cls} \u00b7 ${heat}${ratio ? " " + ratio : ""} ` +
-    `\u2014 ${HEAT_LABEL[heat] || ""}<br>t\u0394 ${tchg} \u00b7 baseline ${base}`;
+    `<b>${f}</b><br>${cls} \u2014 ${HEAT_LABEL[heat] || heat}` +
+    `<br>typical gap ${med} \u00b7 t\u0394 ${tchg}` +
+    `<br><i>click to isolate below</i>`;
   el.heatTip.hidden = false;
   const r = el.heatTip.getBoundingClientRect();
   el.heatTip.style.left =
@@ -379,7 +442,7 @@ el.heatGrid.addEventListener("keydown", (e) => {
   const c = e.target.closest(".hc");
   if (c && (e.key === "Enter" || e.key === " ")) {
     e.preventDefault();
-    openDetail(c.dataset.field, openMinutes);
+    selectField(c.dataset.field);
   }
 });
 

@@ -17,7 +17,12 @@ So we measure the distribution of GAPS BETWEEN CONSECUTIVE VALUE CHANGES:
 
     difference()                 value deltas
     filter(_value != 0)          keep only real transitions
-    elapsed(unit: 1s)            seconds between consecutive transitions
+    elapsed(unit: 1s)            adds an 'elapsed' column (seconds)
+    map(_value = elapsed)        MUST promote it -- elapsed() does NOT
+                                 replace _value, it appends. Aggregating
+                                 without this silently averages the VALUE
+                                 deltas instead of the time gaps, which
+                                 shows up as negative "seconds".
     mean/median/quantiles/max    computed server-side, per field
 
 median is the number to trust for a channel's normal rhythm. The spread
@@ -198,6 +203,7 @@ base = from(bucket: "{INFLUX_BUCKET}")
   |> difference(nonNegative: false)
   |> filter(fn: (r) => r._value != 0.0)
   |> elapsed(unit: 1s)
+  |> map(fn: (r) => ({{ r with _value: float(v: r.elapsed) }}))
 
 {pipes}
 '''
@@ -259,8 +265,12 @@ def decile_table(vals, label):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=1)
-    ap.add_argument("--deep-days", type=int, default=14)
-    ap.add_argument("--min-gaps", type=int, default=30,
+    # Default OFF. Enabling it over every low-count field pulls in all the
+    # DISCRETE flags and retired SPI channels -- 100+ fields, ~3 hours, to
+    # measure things that rarely change by design. Point it at a short
+    # explicit list instead when a specific slow channel matters.
+    ap.add_argument("--deep-days", type=int, default=0)
+    ap.add_argument("--min-gaps", type=int, default=2,
                     help="fewer gaps than this in the fast pass -> deep pass")
     ap.add_argument("--chunk", type=int, default=10)
     ap.add_argument("--timeout", type=int, default=600)

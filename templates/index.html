@@ -30,7 +30,7 @@
 <section class="heat" aria-label="channel cadence map">
   <div class="heat-hd">
     <h2>CADENCE MAP</h2>
-    <p>one cell per channel &mdash; colour is how far behind its <em>own</em> normal rhythm it is</p>
+    <p>one cell per channel &mdash; colour is <em>how often it changes</em>, not whether it is healthy &middot; click a cell to isolate it below</p>
     <div class="heat-legend" id="heatLegend"></div>
   </div>
   <div class="heat-grid" id="heatGrid">
@@ -43,12 +43,12 @@
   <div class="clock" id="clkPoll" data-state="init">
     <div class="clk-k">t_poll</div>
     <div class="clk-v" id="vPoll">&mdash;</div>
-    <div class="clk-d">since collector last wrote &mdash; catches a dead pipeline</div>
+    <div class="clk-d">since the collector last wrote anything</div>
   </div>
   <div class="clock" id="clkSrc" data-state="init">
     <div class="clk-k">t_change</div>
     <div class="clk-v" id="vSrc">&mdash;</div>
-    <div class="clk-d">canary counters advancing &mdash; catches a frozen board</div>
+    <div class="clk-d">oldest fast canary &mdash; read against its own measured cadence</div>
   </div>
   <div class="clock" id="clkWincc" data-state="na">
     <div class="clk-k">t_wincc</div>
@@ -104,75 +104,122 @@
     </div>
     <div class="gl">
 
-      <h4>The question this page answers</h4>
+      <h4>What this page is for</h4>
       <p>A value on a screen carries no evidence of its own freshness. A frozen
       board and a healthy one both render as numbers. Everything here exists to
-      tell those two apart.</p>
+      tell those two apart while you develop against the WinCC panels.</p>
+      <p>Every query is a read against Prof. Cheu's production TIG stack
+      (Telegraf &rarr; InfluxDB &rarr; Grafana). Nothing is written, no
+      container restarted, no config edited.</p>
 
-      <h4>t_poll</h4>
-      <p>Seconds since Telegraf last wrote <em>anything</em> to InfluxDB.
-      Catches a dead pipeline &mdash; container stopped, VPN dropped, collector
-      crashed. <strong>Blind to a frozen board</strong>: Telegraf writes on a
-      5&nbsp;second schedule whether or not the value moved, so a stuck board
-      still produces a healthy-looking t_poll forever. This is why one clock
-      is not enough.</p>
+      <h4>Cadence map &mdash; the coloured grid</h4>
+      <p>One cell per channel. Colour encodes <strong>how often that channel
+      changes</strong>. It is a taxonomy, not an alarm: red means "rarely
+      changes", not "broken". A serial number that never changes is red and
+      that is correct.</p>
+      <ul>
+        <li><b class="k-green">green</b> &mdash; median gap &le; 30s</li>
+        <li><b class="k-yellow">yellow</b> &mdash; 30s to 5 minutes</li>
+        <li><b class="k-orange">orange</b> &mdash; 5 minutes to 24 hours</li>
+        <li><b class="k-red">red</b> &mdash; over 24 hours, including channels that never changed during measurement</li>
+        <li><b class="k-nobase">grey</b> &mdash; not measured; run <code>tools/collect_cadence.py</code></li>
+      </ul>
+      <p>The edges were cut from the measured distribution, not chosen in
+      advance. Both fall in empty regions &mdash; nothing sits near a boundary,
+      so a small change in cadence cannot flip a colour.</p>
+      <p>Nothing on the map blinks or pulses. These colours describe what a
+      channel <em>is</em>, not that anything needs attention.</p>
+      <p>Each channel card below carries the same colour as a thin outline, so
+      the grid and the map agree at a glance.</p>
+
+      <h4>The 5-second floor</h4>
+      <p>Telegraf polls every 5 seconds. That is the fastest change this data
+      can express: a rail jittering every 200ms and one changing every 4.9s are
+      indistinguishable here. Roughly a third of all channels sit at exactly
+      5.0s for that reason. Finer resolution would need
+      <code>subscription_interval</code> on Telegraf's OPC UA input.</p>
+
+      <h4>t_poll and the header lamp</h4>
+      <p>Seconds since Telegraf last wrote <em>anything</em>. Catches a dead
+      pipeline &mdash; container stopped, VPN dropped, collector crashed.
+      <strong>Blind to a frozen board</strong>: Telegraf writes on schedule
+      whether or not the value moved.</p>
+      <p>The lamp top-right reports this and nothing else. It makes one claim
+      &mdash; the collector is or is not writing &mdash; and deliberately makes
+      no judgement about the board itself.</p>
 
       <h4>t_change (t&Delta;)</h4>
       <p>Seconds since a channel's value last actually <em>differed</em>.
-      Catches the frozen board, the wedged OPC UA server, the stalled IPMC.
-      Derived from value transitions, not timestamps &mdash; so it works
-      correctly even though Telegraf polls rather than subscribes.</p>
+      Derived from value transitions rather than timestamps, so it stays
+      correct even though Telegraf polls rather than subscribes. Read it
+      against that channel's cadence: 700s is alarming for a 5-second rail and
+      unremarkable for a 2-hour counter.</p>
 
       <h4>t_wincc</h4>
-      <p>Not yet built (mk_1). Would measure how long since the WinCC
-      datapoint for the same channel changed. <strong>t_change small +
-      t_wincc large = the panel is stale over live data</strong>, which is the
-      bug this project was started to catch.</p>
+      <p>Not built yet (mk_1). Would measure how long since the WinCC datapoint
+      for the same channel changed. <strong>t_change small + t_wincc large =
+      the panel is stale over live data</strong> &mdash; the bug this project
+      exists to catch.</p>
 
       <h4>Canary counters</h4>
-      <p>Six monotonic counters &mdash; <code>FF11/12/13_uptime</code>,
-      <code>IPMC_seq</code>, <code>IPMC_rawtime</code>, <code>IPMC_time</code>.
-      They only ever count upward, so one that stops advancing is
-      unambiguously frozen. Most channels can't do this job: a voltage rail
-      may sit flat and be perfectly healthy. The canaries have no benign
-      reading, which is what makes them the liveness oracle.</p>
-
-      <h4>Cadence map</h4>
-      <p>One cell per channel. Colour is <code>t_change &divide; that
-      channel's own baseline interval</code> &mdash; a ratio, not a fixed
-      number of seconds. A 5&nbsp;second voltage rail and a 15&nbsp;minute
-      uptime counter are both green when healthy. Baselines come from
-      <code>tools/build_baseline.py</code>, measured against real history.</p>
-      <ul>
-        <li><b class="k-green">green</b> &mdash; changing on schedule</li>
-        <li><b class="k-yellow">yellow</b> &mdash; lagging its normal rhythm</li>
-        <li><b class="k-orange">orange</b> &mdash; well overdue</li>
-        <li><b class="k-red">red</b> &mdash; effectively stopped</li>
-        <li><b class="k-static">static</b> &mdash; identity string, never expected to change</li>
-        <li><b class="k-nobase">no base</b> &mdash; no baseline yet; run the baseline tool</li>
-      </ul>
+      <p>Monotonic counters only ever count upward, so one that stops advancing
+      is unambiguously frozen. Most channels cannot do this job: a voltage rail
+      may sit flat and be perfectly healthy.</p>
+      <p>Only the fast ones drive the t_change clock. <strong>They are not
+      equally useful.</strong> Measurement showed
+      <code>FF11/12/13_uptime</code> tick only every 7200s &mdash; exactly two
+      hours &mdash; so they cannot detect a freeze for up to two hours.
+      <code>IPMC_seq</code>, <code>IPMC_rawtime</code> and
+      <code>IPMC_time</code> move on the order of seconds and are the ones
+      worth watching for live liveness.</p>
 
       <h4>Channel classes</h4>
       <ul>
-        <li><b>COUNTER</b> &mdash; monotonic. The canaries. Unambiguous when stopped.</li>
-        <li><b>ANALOG</b> &mdash; continuous sensor. Should jitter. Flat is suspicious but not proof.</li>
-        <li><b>DISCRETE</b> &mdash; flag or bitfield. Flat for hours is <em>correct</em>.</li>
+        <li><b>COUNTER</b> &mdash; monotonic. Unambiguous when stopped.</li>
+        <li><b>ANALOG</b> &mdash; continuous sensor. Flat is suspicious but not proof: many are quantised coarser than their real variation.</li>
+        <li><b>DISCRETE</b> &mdash; flag or bitfield. Flat for hours is correct.</li>
         <li><b>STATIC</b> &mdash; identity string. Never changes by design.</li>
+        <li><b>UNKNOWN</b> &mdash; in InfluxDB but not in the classification file, e.g. the retired <code>SRTM_SPI*</code> channels and <code>Quality</code>.</li>
       </ul>
 
-      <h4>&mu; and &sigma;</h4>
-      <p>Rolling mean and standard deviation over the window. &sigma; is a
-      second liveness sensor: a frozen analog channel has &sigma; exactly
-      zero. It is <strong>displayed but never alarmed</strong>, because
-      &sigma;=0 is equally consistent with a genuinely quiet rail, or one
-      whose ADC step is coarse relative to its real noise. Alarming on it
-      needs a per-channel healthy baseline first.</p>
-      <p>&mu; answers a different question &mdash; drift, not liveness. A
-      board slowly heating shows in &mu;, not &sigma;.</p>
+      <h4>Detail view: value statistics</h4>
+      <p>Computed over the window you select (30m to 7d).</p>
+      <ul>
+        <li><b>current</b> &mdash; most recent value</li>
+        <li><b>mean</b> &mdash; average value; answers drift, not liveness</li>
+        <li><b>sigma</b> &mdash; standard deviation of the value. A frozen channel has sigma exactly 0 &mdash; but so does a genuinely quiet rail, or one whose ADC step is coarser than its real noise. Shown, never alarmed.</li>
+        <li><b>min / max</b> &mdash; observed range</li>
+        <li><b>t_change</b> &mdash; as above</li>
+      </ul>
 
-      <h4>Read-only</h4>
-      <p>Every query here is a read against Prof. Cheu's production TIG stack.
-      Nothing is written, no container is restarted, no config is edited.</p>
+      <h4>Detail view: change rhythm</h4>
+      <p>Statistics of the <em>interval between consecutive value changes</em>,
+      over the same window. Distinct from the value statistics above: this
+      measures rhythm, those measure magnitude.</p>
+      <ul>
+        <li><b>changes</b> &mdash; number of transitions observed</li>
+        <li><b>mean gap</b> &mdash; average seconds between changes</li>
+        <li><b>sigma gap</b> &mdash; standard deviation of that interval. Near zero is a metronome; large means it changes in bursts.</li>
+        <li><b>median gap</b> &mdash; the typical interval. More robust than the mean, which one long stall can drag upward by orders of magnitude.</li>
+        <li><b>min / max gap</b> &mdash; shortest and longest observed interval</li>
+      </ul>
+
+      <h4>Reference cadence (24h)</h4>
+      <p>From <code>data/cadence_stats.csv</code>, measured once over a full
+      day by <code>tools/collect_cadence.py</code>. The window statistics above
+      can be compared against it: a channel whose current rhythm has drifted
+      from its 24-hour reference is doing something new.</p>
+      <ul>
+        <li><b>p10 / p90</b> &mdash; 10th and 90th percentile gap. The spread between them says whether the channel has a rhythm at all.</li>
+        <li><b>burstiness</b> &mdash; p90 divided by median. 1.0 is a metronome; 50&times; means it normally changes fast and then stalls for long stretches. Two channels can share a median of 5s and behave nothing alike.</li>
+        <li><b>n gaps</b> &mdash; how many intervals the reference is based on. Small numbers mean a weak measurement.</li>
+      </ul>
+
+      <h4>Selecting from the map</h4>
+      <p>Clicking a cell in the cadence map isolates that channel in the grid
+      below and opens its detail view. Closing the detail restores the full
+      grid.</p>
+
     </div>
   </div>
 </div>
@@ -186,7 +233,11 @@
       </div>
       <button class="dt-x" id="dtX" aria-label="close detail">CLOSE &times;</button>
     </div>
+    <div class="dt-sec">value over this window</div>
     <div class="dt-stats" id="dtStats"></div>
+    <div class="dt-sec">change rhythm &mdash; interval between value changes</div>
+    <div class="dt-stats" id="dtGaps"></div>
+    <div class="dt-ref" id="dtRef"></div>
     <div class="dt-rng" id="dtRng">
       <span>window</span>
       <button data-m="30" class="on">30m</button>
